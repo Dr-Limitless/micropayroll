@@ -1,0 +1,18 @@
+{
+  "name": "micropayroll-root",
+  "version": "1.0.0",
+  "description": "Microfinancial Management System (HR & Payroll Platform)",
+  "scripts": {
+    "dev": "node start-dev.js",
+    "dev:all": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cd server && npm start",
+    "dev:client": "cd client && npm run dev",
+    "start": "node start-dev.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

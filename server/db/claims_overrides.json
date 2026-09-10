@@ -1,0 +1,37 @@
+{
+  "overrides": {
+    "1": {
+      "status": "Approved",
+      "approved_by": "Liza Gomez (HR Manager)",
+      "reimbursement_status": "Pending Reimbursement"
+    },
+    "2": {
+      "status": "Approved",
+      "approved_by": "Diana Sterling (Finance Director)",
+      "reimbursement_status": "Pending Reimbursement"
+    },
+    "3": {
+      "status": "Approved",
+      "approved_by": "Liza Gomez (HR Manager)",
+      "reimbursement_status": "Pending Reimbursement"
+    },
+    "4": {
+      "status": "Approved",
+      "approved_by": "Authorized Approver",
+      "reimbursement_status": "Pending Reimbursement"
+    },
+    "5": {
+      "status": "Rejected",
+      "approved_by": "Liza Gomez (HR Manager)",
+      "reimbursement_status": "Rejected"
+    },
+    "6": {
+      "status": "Approved",
+      "approved_by": "Liza Gomez (HR Manager)",
+      "reimbursement_status": "Pending Reimbursement",
+      "is_ppa": true,
+      "ppa_source_period": "July 1–15, 2024"
+    }
+  },
+  "newClaims": []
+}
