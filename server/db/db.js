@@ -1851,15 +1851,22 @@ syncPeriodComputation('December 1–15, 2026');
 syncPeriodComputation('December 16–31, 2026');
 syncPeriodComputation('December 2026');
 
-// Connect to DB pool
+// Connect to DB pool and auto-execute schema if connected
 async function initDB() {
   try {
     const client = await pool.connect();
-    console.log('✅ Connected successfully to PostgreSQL database: micropayroll');
+    console.log('✅ Connected successfully to PostgreSQL database');
     isPostgreConnected = true;
+
+    const schemaPath = path.join(__dirname, 'schema.sql');
+    if (fs.existsSync(schemaPath)) {
+      const sql = fs.readFileSync(schemaPath, 'utf8');
+      await client.query(sql);
+      console.log('✅ PostgreSQL tables and schema verified/created from schema.sql');
+    }
     client.release();
   } catch (err) {
-    console.log('ℹ️  PostgreSQL "micropayroll" direct connection notice:', err.message);
+    console.log('ℹ️  PostgreSQL notice (using resilient in-memory repository):', err.message);
   }
 }
 initDB();

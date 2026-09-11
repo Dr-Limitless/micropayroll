@@ -1,4 +1,5 @@
-const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
+const rawApiUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+const BASE_URL = rawApiUrl ? `${rawApiUrl}/api` : '/api';
 
 function getAuthHeaders() {
   const token = localStorage.getItem('mms_access_token');
