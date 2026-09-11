@@ -1,8 +1,44 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Search, Bell, LogOut, ChevronDown, Shield, ShieldCheck, CheckCheck, Clock, AlertCircle, Info } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { Search, Bell, LogOut, ChevronDown, Shield, ShieldCheck, CheckCheck, Clock, AlertCircle, Info, X, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import TwoFactorModal from '../security/TwoFactorModal';
+
+const SEARCHABLE_MODULES = [
+  { id: 'payroll_computation', label: 'Payroll Computation', category: 'Payroll Management', keywords: 'salary pay net gross computation formula tax sss philhealth pagibig' },
+  { id: 'timekeeping', label: 'Timekeeping & Attendance Integration', category: 'Payroll Management', keywords: 'overtime holiday attendance biometric punch shift tardy' },
+  { id: 'payslips', label: 'Payslip Generation & Payroll Records', category: 'Payroll Management', keywords: 'payslip download print compensation advice sha256' },
+  { id: 'salary_structure', label: 'Salary Structure Configuration', category: 'Compensation Planning', keywords: 'grade band l1 l2 l3 l4 base pay min max' },
+  { id: 'allowances', label: 'Allowances & Incentive Management', category: 'Compensation Planning', keywords: 'de minimis rice laundry clothing transportation stipend' },
+  { id: 'salary_adjustment', label: 'Salary Adjustment Management', category: 'Compensation Planning', keywords: 'raise promotion merit increase effective date' },
+  { id: 'claim_filing', label: 'Employee Claim Filing', category: 'Claims & Reimbursement', keywords: 'expense receipt reimburse medical prescription travel' },
+  { id: 'claim_verification', label: 'Claim Verification & Approval', category: 'Claims & Reimbursement', keywords: 'audit approve reject clm reimbursement queue' },
+  { id: 'reimbursement', label: 'Reimbursement Processing & Monitoring', category: 'Claims & Reimbursement', keywords: 'disbursement payout microfinance microloan advance' },
+  { id: 'benefits_enrollment', label: 'Benefits Enrollment & Management', category: 'HMO & Benefits Administration', keywords: 'hmo maxicare intellicare medicard life insurance' },
+  { id: 'hmo_contribution', label: 'HMO Contribution Management', category: 'HMO & Benefits Administration', keywords: 'premium employer employee share dependent' },
+  { id: 'benefits_monitoring', label: 'Employee Benefits Monitoring', category: 'HMO & Benefits Administration', keywords: 'utilization coverage cardholder tier' },
+  { id: 'realtime_dashboard', label: 'Real-Time Payroll Dashboard', category: 'HR Analytics Dashboard', keywords: 'analytics gross deductions net chart kpi' },
+  { id: 'financial_reporting', label: 'Financial Reporting', category: 'HR Analytics Dashboard', keywords: 'journal ledger voucher debit credit audit' },
+  { id: 'government_compliance', label: 'Government Compliance Reports', category: 'HR Analytics Dashboard', keywords: 'sss philhealth pagibig bir 1601c 2316 schedule book table' }
+];
+
+const SEARCHABLE_EMPLOYEES = [
+  { code: 'EMP-001', name: 'Maria Santos', dept: 'Engineering', pos: 'Senior Software Engineer', moduleId: 'payslips' },
+  { code: 'EMP-002', name: 'Jose Reyes', dept: 'Product', pos: 'Principal Product Manager', moduleId: 'payslips' },
+  { code: 'EMP-003', name: 'Marco Dela Cruz', dept: 'Engineering', pos: 'Lead DevOps & Cloud Engineer', moduleId: 'payslips' },
+  { code: 'EMP-004', name: 'Ana Cruz', dept: 'Design', pos: 'Lead Product Designer', moduleId: 'payslips' },
+  { code: 'EMP-005', name: 'Patricia Lim', dept: 'Human Resources', pos: 'Senior HR Generalist', moduleId: 'payslips' },
+  { code: 'EMP-006', name: 'Roberto Diaz', dept: 'Operations', pos: 'Operations Specialist', moduleId: 'payslips' }
+];
+
+const SEARCHABLE_CLAIMS = [
+  { code: 'CLM-2024-001', employee: 'Maria Santos', type: 'Medical & Dental Prescription', amount: '₱4,500.00', moduleId: 'claim_verification' },
+  { code: 'CLM-2024-002', employee: 'Jose Reyes', type: 'Official Client Travel Allowance', amount: '₱6,200.00', moduleId: 'claim_verification' },
+  { code: 'CLM-2024-003', employee: 'Marco Dela Cruz', type: 'Communication & Cloud Stipend', amount: '₱3,100.00', moduleId: 'claim_verification' },
+  { code: 'CLM-2024-004', employee: 'Patricia Lim', type: 'Office Supplies & Onboarding Kit', amount: '₱5,000.00', moduleId: 'claim_verification' },
+  { code: 'CLM-2024-005', employee: 'Ana Cruz', type: 'Personal Software Purchase', amount: '₱2,500.00', moduleId: 'claim_verification' },
+  { code: 'CLM-2024-006', employee: 'Marco Dela Cruz', type: 'Emergency Client Transport', amount: '₱1,850.00', moduleId: 'claim_verification' }
+];
 
 
 const CATEGORY_META = {
@@ -33,8 +69,46 @@ export default function Navbar({ activeModule, categoryLabel, moduleLabel, onNav
   const [show2FAModal, setShow2FAModal] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(user?.two_factor_enabled || false);
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef(null);
+
   const dropdownRef = useRef(null);
   const bellRef = useRef(null);
+
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return { modules: [], employees: [], claims: [] };
+
+    const modules = SEARCHABLE_MODULES.filter(m => 
+      m.label.toLowerCase().includes(q) ||
+      m.category.toLowerCase().includes(q) ||
+      m.keywords.toLowerCase().includes(q)
+    ).slice(0, 4);
+
+    const employees = SEARCHABLE_EMPLOYEES.filter(e =>
+      e.name.toLowerCase().includes(q) ||
+      e.code.toLowerCase().includes(q) ||
+      e.dept.toLowerCase().includes(q) ||
+      e.pos.toLowerCase().includes(q)
+    ).slice(0, 4);
+
+    const claims = SEARCHABLE_CLAIMS.filter(c =>
+      c.code.toLowerCase().includes(q) ||
+      c.employee.toLowerCase().includes(q) ||
+      c.type.toLowerCase().includes(q)
+    ).slice(0, 4);
+
+    return { modules, employees, claims };
+  }, [searchQuery]);
+
+  const handleSelectSearchResult = (targetModuleId) => {
+    if (onNavigate) {
+      onNavigate(targetModuleId);
+    }
+    setSearchOpen(false);
+    setSearchQuery('');
+  };
 
   const initials = user?.initials || (user?.full_name ? user.full_name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'LG');
   const displayName = user?.full_name || 'Liza Gomez';
@@ -79,6 +153,7 @@ export default function Navbar({ activeModule, categoryLabel, moduleLabel, onNav
     function handleClickOutside(e) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false);
       if (bellRef.current && !bellRef.current.contains(e.target)) setBellOpen(false);
+      if (searchRef.current && !searchRef.current.contains(e.target)) setSearchOpen(false);
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -128,14 +203,119 @@ export default function Navbar({ activeModule, categoryLabel, moduleLabel, onNav
 
       {/* Right: Search, Bell, Logout, Avatar */}
       <div className="flex items-center space-x-3">
-        {/* Search Bar */}
-        <div className="relative hidden md:block w-48 sm:w-64">
+        {/* Global Search Bar */}
+        <div className="relative hidden md:block w-52 sm:w-72" ref={searchRef}>
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
           <input
             type="text"
-            placeholder="Search employees, claims..."
-            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] outline-none transition-all"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setSearchOpen(true);
+            }}
+            onFocus={() => {
+              if (searchQuery.trim()) setSearchOpen(true);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setSearchOpen(false);
+            }}
+            placeholder="Search employees, claims, modules..."
+            className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] outline-none transition-all shadow-xs"
           />
+          {searchQuery && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setSearchOpen(false);
+              }}
+              className="absolute right-2 top-2 p-0.5 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
+
+          {/* Quick Search Autocomplete Dropdown */}
+          {searchOpen && searchQuery.trim().length > 0 && (
+            <div className="absolute left-0 right-0 mt-2 rounded-2xl bg-white border border-slate-200 shadow-2xl z-50 overflow-hidden max-h-[420px] overflow-y-auto">
+              {/* Modules Results */}
+              {searchResults.modules.length > 0 && (
+                <div className="p-2 border-b border-slate-100">
+                  <div className="text-[10px] uppercase font-bold text-slate-400 px-2 py-1 tracking-wider">
+                    Modules &amp; Tools
+                  </div>
+                  {searchResults.modules.map(m => (
+                    <button
+                      key={m.id}
+                      onClick={() => handleSelectSearchResult(m.id)}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-purple-50 text-xs flex items-center justify-between transition-colors cursor-pointer group"
+                    >
+                      <div>
+                        <div className="font-semibold text-slate-800 group-hover:text-[#7c3aed]">{m.label}</div>
+                        <div className="text-[10px] text-slate-400">{m.category}</div>
+                      </div>
+                      <ArrowRight className="w-3 h-3 text-slate-300 group-hover:text-[#7c3aed] transition-colors" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Employees Results */}
+              {searchResults.employees.length > 0 && (
+                <div className="p-2 border-b border-slate-100">
+                  <div className="text-[10px] uppercase font-bold text-slate-400 px-2 py-1 tracking-wider">
+                    Staff &amp; Employees
+                  </div>
+                  {searchResults.employees.map(e => (
+                    <button
+                      key={e.code}
+                      onClick={() => handleSelectSearchResult(e.moduleId)}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-emerald-50 text-xs flex items-center justify-between transition-colors cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px] flex items-center justify-center">
+                          {e.name.split(' ').map(n => n[0]).join('')}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-slate-800 group-hover:text-emerald-700">{e.name}</div>
+                          <div className="text-[10px] text-slate-400">{e.code} • {e.dept}</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-medium">{e.pos}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Claims Results */}
+              {searchResults.claims.length > 0 && (
+                <div className="p-2 border-b border-slate-100">
+                  <div className="text-[10px] uppercase font-bold text-slate-400 px-2 py-1 tracking-wider">
+                    Claims &amp; Reimbursements
+                  </div>
+                  {searchResults.claims.map(c => (
+                    <button
+                      key={c.code}
+                      onClick={() => handleSelectSearchResult(c.moduleId)}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-amber-50 text-xs flex items-center justify-between transition-colors cursor-pointer group"
+                    >
+                      <div>
+                        <div className="font-semibold text-slate-800 group-hover:text-amber-700">{c.code} — {c.type}</div>
+                        <div className="text-[10px] text-slate-400">{c.employee} • {c.amount}</div>
+                      </div>
+                      <ArrowRight className="w-3 h-3 text-slate-300 group-hover:text-amber-600 transition-colors" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Empty state */}
+              {searchResults.modules.length === 0 && searchResults.employees.length === 0 && searchResults.claims.length === 0 && (
+                <div className="p-6 text-center text-xs text-slate-400">
+                  No matching employees, claims, or modules found for "{searchQuery}"
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Notification Bell */}
@@ -236,16 +416,6 @@ export default function Navbar({ activeModule, categoryLabel, moduleLabel, onNav
             </div>
           )}
         </div>
-
-        {/* Logout */}
-        <button
-          onClick={logout}
-          title="Sign out of MMS"
-          className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-red-600 hover:bg-red-50 border border-slate-200 hover:border-red-200 transition-all cursor-pointer"
-        >
-          <LogOut className="w-3.5 h-3.5" />
-          <span>Logout</span>
-        </button>
 
         {/* User Avatar Dropdown */}
         <div className="relative" ref={dropdownRef}>

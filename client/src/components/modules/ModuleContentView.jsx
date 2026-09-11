@@ -41,7 +41,8 @@ import {
   HelpCircle,
   AlertTriangle,
   ExternalLink,
-  ChevronDown
+  ChevronDown,
+  Search
 } from 'lucide-react';
 
 /* ─────────────────────────────────────────────────────── Shared Helpers */
@@ -372,10 +373,24 @@ function TimekeepingModule() {
     } catch { setToast('Failed to log attendance'); }
   };
 
+  const [search, setSearch] = useState('');
+
   const isEmployee = user?.role === 'employee';
   const displayedLogs = isEmployee
     ? logs.filter(l => user?.full_name && l.employee && l.employee.toLowerCase() === user.full_name.toLowerCase())
     : logs;
+
+  const filteredLogs = displayedLogs.filter(l => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      (l.employee && l.employee.toLowerCase().includes(q)) ||
+      (l.date && l.date.toLowerCase().includes(q)) ||
+      (l.day_type && l.day_type.toLowerCase().includes(q)) ||
+      (l.status && l.status.toLowerCase().includes(q)) ||
+      (l.attendance_status && l.attendance_status.toLowerCase().includes(q))
+    );
+  });
 
   const totalOT = displayedLogs.reduce((s, l) => s + (l.status === 'Approved' ? Number(l.overtime_hours || 0) : 0), 0);
   const pendingOT = displayedLogs.filter(l => l.status === 'Pending' && (Number(l.overtime_hours) > 0 || l.day_type !== 'Regular Day')).length;
@@ -416,16 +431,34 @@ function TimekeepingModule() {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+        <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-sm font-bold text-slate-900">{isEmployee ? "My Punch Records" : "Attendance & Overtime Records"}</h2>
             <p className="text-xs text-slate-400 mt-0.5">Review and approve employee overtime and holiday premiums before payroll finalization</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={load} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative w-48 sm:w-60">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search employee, date, type..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full pl-8 pr-7 py-1.5 border border-slate-200 rounded-xl text-xs outline-none focus:border-sky-500 shadow-xs bg-slate-50/50 focus:bg-white transition-all"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-2 top-2 p-0.5 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+            <button onClick={load} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
               <RefreshCw className="w-4 h-4" />
             </button>
-            <button onClick={() => setShowLog(true)} className="px-3.5 py-1.5 rounded-xl bg-sky-500 text-white text-xs font-semibold hover:bg-sky-600 transition-colors flex items-center gap-1 shadow-sm">
+            <button onClick={() => setShowLog(true)} className="px-3.5 py-1.5 rounded-xl bg-sky-500 text-white text-xs font-semibold hover:bg-sky-600 transition-colors flex items-center gap-1 shadow-sm cursor-pointer whitespace-nowrap">
               <Plus className="w-3.5 h-3.5" /><span>Log Entry</span>
             </button>
           </div>
@@ -444,7 +477,7 @@ function TimekeepingModule() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {displayedLogs.map((l) => (
+                {filteredLogs.map((l) => (
                   <tr key={l.id} className="hover:bg-slate-50/70">
                     <td className="py-3.5 px-4 font-bold text-slate-900">{l.employee}</td>
                     <td className="py-3.5 px-4 text-slate-500 font-mono whitespace-nowrap">{l.date}</td>
@@ -1418,6 +1451,7 @@ function ClaimVerificationModule() {
   const [claims, setClaims] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
+  const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1445,6 +1479,20 @@ function ClaimVerificationModule() {
   const pending = claims.filter(c => c.status === 'Pending' || c.status === 'Submitted');
   const approved = claims.filter(c => c.status === 'Approved');
 
+  const filteredClaims = claims.filter(c => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      (c.claim_id && c.claim_id.toLowerCase().includes(q)) ||
+      (c.claim_code && c.claim_code.toLowerCase().includes(q)) ||
+      (c.employee && c.employee.toLowerCase().includes(q)) ||
+      (c.type && c.type.toLowerCase().includes(q)) ||
+      (c.claim_type && c.claim_type.toLowerCase().includes(q)) ||
+      (c.department && c.department.toLowerCase().includes(q)) ||
+      (c.status && c.status.toLowerCase().includes(q))
+    );
+  });
+
   return (
     <div className="space-y-6">
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
@@ -1469,9 +1517,34 @@ function ClaimVerificationModule() {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="text-sm font-bold text-slate-900">Verification Queue — Pending & Reviewed Claims</h2>
-          <button onClick={load} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"><RefreshCw className="w-4 h-4" /></button>
+        <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900">Verification Queue — Pending & Reviewed Claims</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Filter by claim code, employee, expense category, or status</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="relative w-48 sm:w-64">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search claim, employee, type..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full pl-8 pr-7 py-1.5 border border-slate-200 rounded-xl text-xs outline-none focus:border-amber-500 shadow-xs bg-slate-50/50 focus:bg-white transition-all"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-2 top-2 p-0.5 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+            <button onClick={load} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer">
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
@@ -1483,7 +1556,7 @@ function ClaimVerificationModule() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {claims.map(c => (
+              {filteredClaims.map(c => (
                 <tr key={c.id} className="hover:bg-slate-50/70">
                   <td className="py-3.5 px-4 font-mono font-semibold text-slate-600">{c.claim_id || `CLM-00${c.id}`}</td>
                   <td className="py-3.5 px-4 font-bold text-slate-900">

@@ -69,6 +69,7 @@ export default function PayrollComputationView({ searchFilter }) {
   const [isSubmittingEmp, setIsSubmittingEmp] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showReport, setShowReport] = useState(false);
+  const [localSearch, setLocalSearch] = useState('');
 
 
   // New Employee Form State
@@ -231,12 +232,15 @@ export default function PayrollComputationView({ searchFilter }) {
   };
 
   const filteredEmployees = employees.filter(emp => {
-    const term = (searchFilter || '').toLowerCase();
+    const term = (localSearch || searchFilter || '').toLowerCase().trim();
+    if (!term) return true;
     return (
-      emp.first_name.toLowerCase().includes(term) ||
-      emp.last_name.toLowerCase().includes(term) ||
-      emp.department.toLowerCase().includes(term) ||
-      emp.employee_code.toLowerCase().includes(term)
+      (emp.first_name && emp.first_name.toLowerCase().includes(term)) ||
+      (emp.last_name && emp.last_name.toLowerCase().includes(term)) ||
+      (emp.department && emp.department.toLowerCase().includes(term)) ||
+      (emp.employee_code && emp.employee_code.toLowerCase().includes(term)) ||
+      (emp.position && emp.position.toLowerCase().includes(term)) ||
+      (emp.status && emp.status.toLowerCase().includes(term))
     );
   });
 
@@ -594,11 +598,31 @@ export default function PayrollComputationView({ searchFilter }) {
             </p>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 flex-wrap sm:flex-nowrap gap-2">
+            {/* Table Search Bar */}
+            <div className="relative w-44 sm:w-60">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                placeholder="Search employee, dept, code..."
+                value={localSearch}
+                onChange={(e) => setLocalSearch(e.target.value)}
+                className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] outline-none transition-all shadow-xs"
+              />
+              {localSearch && (
+                <button
+                  onClick={() => setLocalSearch('')}
+                  className="absolute right-2 top-2 p-0.5 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
             {canPerformAction(user?.role, 'ENROLL_EMPLOYEE') && (
               <button
                 onClick={() => setShowAddModal(true)}
-                className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-[#7c3aed] border border-purple-200 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-[#7c3aed] border border-purple-200 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer whitespace-nowrap"
                 title="Enroll a new employee into payroll"
               >
                 <UserPlus className="w-3.5 h-3.5" />
@@ -608,7 +632,7 @@ export default function PayrollComputationView({ searchFilter }) {
             <button
               onClick={() => loadComputation(selectedMonth)}
               title="Refresh live data"
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             </button>
