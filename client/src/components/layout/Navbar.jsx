@@ -3,6 +3,7 @@ import { Search, Bell, LogOut, ChevronDown, Shield, ShieldCheck, CheckCheck, Clo
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import TwoFactorModal from '../security/TwoFactorModal';
+import { ACCENT } from '../../theme';
 
 const SEARCHABLE_MODULES = [
   { id: 'payroll_computation', label: 'Payroll Computation', category: 'Payroll Management', keywords: 'salary pay net gross computation formula tax sss philhealth pagibig' },
@@ -183,29 +184,29 @@ export default function Navbar({ activeModule, categoryLabel, moduleLabel, onNav
 
   return (
     <>
-      <header className="bg-white border-b border-slate-200/80 sticky top-0 z-30 px-6 py-3.5 flex items-center justify-between">
+      <header className="bg-white border-b border-[#E4E8F0] sticky top-0 z-30 px-6 sm:px-8 h-16 flex items-center justify-between">
       {/* Left Breadcrumb & Module indicator */}
       <div key={activeModule} className="flex items-center space-x-3 animate-header-fade">
-        <div className="w-1 h-5 bg-[#7c3aed] rounded-full shrink-0" />
+        <div className="w-1.5 h-6 bg-[#2E6BE6] rounded-full shrink-0" />
         <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">
+          <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider leading-none">
             {categoryLabel || 'PAYROLL MANAGEMENT'}
           </span>
-          <span className="text-sm font-bold text-slate-900 leading-tight">
+          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-[17px] font-bold text-[#101828] leading-tight">
             {moduleLabel || 'Payroll Computation'}
           </span>
         </div>
-        <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#f3e8ff] text-[#7c3aed] text-xs font-semibold">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#7c3aed]" />
+        <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EEF2FF] text-[#2E6BE6] text-[11px] font-semibold">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#2E6BE6]" />
           {categoryLabel || 'Payroll Management'}
         </span>
       </div>
 
-      {/* Right: Search, Bell, Logout, Avatar */}
+      {/* Right: Search, Bell, Avatar */}
       <div className="flex items-center space-x-3">
         {/* Global Search Bar */}
-        <div className="relative hidden md:block w-52 sm:w-72" ref={searchRef}>
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+        <div className="relative hidden md:block w-64 sm:w-72" ref={searchRef}>
+          <Search className="w-4 h-4 text-[#94A3B8] absolute left-3 top-2.5" />
           <input
             type="text"
             value={searchQuery}
@@ -220,7 +221,7 @@ export default function Navbar({ activeModule, categoryLabel, moduleLabel, onNav
               if (e.key === 'Escape') setSearchOpen(false);
             }}
             placeholder="Search employees, claims, modules..."
-            className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] outline-none transition-all shadow-xs"
+            className="w-full pl-9 pr-7 py-2 text-[13px] rounded-lg border border-[#E4E8F0] bg-[#F8FAFC] text-[#101828] placeholder:text-[#94A3B8] focus:bg-white focus:border-[#2E6BE6] focus:ring-1 focus:ring-[#2E6BE6] outline-none transition-all"
           />
           {searchQuery && (
             <button
@@ -228,32 +229,32 @@ export default function Navbar({ activeModule, categoryLabel, moduleLabel, onNav
                 setSearchQuery('');
                 setSearchOpen(false);
               }}
-              className="absolute right-2 top-2 p-0.5 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
+              className="absolute right-2.5 top-2.5 p-0.5 text-[#94A3B8] hover:text-[#475467] rounded-full cursor-pointer"
             >
-              <X className="w-3 h-3" />
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
 
           {/* Quick Search Autocomplete Dropdown */}
           {searchOpen && searchQuery.trim().length > 0 && (
-            <div className="absolute left-0 right-0 mt-2 rounded-2xl bg-white border border-slate-200 shadow-2xl z-50 overflow-hidden max-h-[420px] overflow-y-auto">
+            <div className="absolute left-0 right-0 mt-2 rounded-xl bg-white border border-[#E4E8F0] shadow-xl z-50 overflow-hidden max-h-[420px] overflow-y-auto">
               {/* Modules Results */}
               {searchResults.modules.length > 0 && (
-                <div className="p-2 border-b border-slate-100">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 px-2 py-1 tracking-wider">
+                <div className="p-2 border-b border-[#F1F5F9]">
+                  <div className="text-[10px] uppercase font-bold text-[#64748B] px-2 py-1 tracking-wider">
                     Modules &amp; Tools
                   </div>
                   {searchResults.modules.map(m => (
                     <button
                       key={m.id}
                       onClick={() => handleSelectSearchResult(m.id)}
-                      className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-purple-50 text-xs flex items-center justify-between transition-colors cursor-pointer group"
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-blue-50/60 text-xs flex items-center justify-between transition-colors cursor-pointer group"
                     >
                       <div>
-                        <div className="font-semibold text-slate-800 group-hover:text-[#7c3aed]">{m.label}</div>
+                        <div className="font-semibold text-slate-800 group-hover:text-[#2E6BE6]">{m.label}</div>
                         <div className="text-[10px] text-slate-400">{m.category}</div>
                       </div>
-                      <ArrowRight className="w-3 h-3 text-slate-300 group-hover:text-[#7c3aed] transition-colors" />
+                      <ArrowRight className="w-3 h-3 text-slate-300 group-hover:text-[#2E6BE6] transition-colors" />
                     </button>
                   ))}
                 </div>
@@ -322,26 +323,24 @@ export default function Navbar({ activeModule, categoryLabel, moduleLabel, onNav
         <div className="relative" ref={bellRef}>
           <button
             onClick={() => setBellOpen(prev => !prev)}
-            className="relative p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl cursor-pointer transition-colors"
+            className="relative w-[34px] h-[34px] rounded-full bg-[#F1F5F9] flex items-center justify-center text-[#64748B] hover:text-[#101828] hover:bg-[#E2E8F0] cursor-pointer transition-colors"
             title="Notifications"
           >
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center leading-none shadow">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#2E6BE6]" />
             )}
           </button>
 
           {/* Notifications Flyout */}
           {bellOpen && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white border border-slate-200 shadow-2xl z-50 overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/50">
+            <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl bg-white border border-[#E4E8F0] shadow-xl z-50 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-[#F1F5F9] bg-[#F8FAFC]">
                 <div className="flex items-center space-x-2">
-                  <Bell className="w-3.5 h-3.5 text-[#7c3aed]" />
-                  <span className="text-sm font-bold text-slate-900">Notifications</span>
+                  <Bell className="w-3.5 h-3.5 text-[#2E6BE6]" />
+                  <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-sm font-bold text-[#101828]">Notifications</span>
                   {unreadCount > 0 && (
-                    <span className="px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px] font-black">
+                    <span className="px-1.5 py-0.5 rounded-full bg-blue-100 text-[#2E6BE6] text-[10px] font-bold">
                       {unreadCount} new
                     </span>
                   )}
@@ -349,7 +348,7 @@ export default function Navbar({ activeModule, categoryLabel, moduleLabel, onNav
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllRead}
-                    className="flex items-center space-x-1 text-[10px] font-semibold text-[#7c3aed] hover:text-purple-800 transition-colors cursor-pointer"
+                    className="flex items-center space-x-1 text-[11px] font-semibold text-[#2E6BE6] hover:text-blue-800 transition-colors cursor-pointer"
                   >
                     <CheckCheck className="w-3 h-3" />
                     <span>Mark all read</span>
@@ -455,6 +454,16 @@ export default function Navbar({ activeModule, categoryLabel, moduleLabel, onNav
                   <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${twoFactorEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
                     {twoFactorEnabled ? 'ON' : 'OFF'}
                   </span>
+                </button>
+                <button
+                  onClick={() => { setDropdownOpen(false); onNavigate('settings'); }}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-xl flex items-center space-x-2 transition-colors cursor-pointer"
+                >
+                  <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span>Settings &amp; Preferences</span>
                 </button>
                 <button
                   onClick={() => { setDropdownOpen(false); logout(); }}

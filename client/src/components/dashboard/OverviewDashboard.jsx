@@ -61,15 +61,15 @@ export default function OverviewDashboard({ onNavigate }) {
   return (
     <div className="space-y-6">
       {/* Top Welcome Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-lg border border-slate-800">
-        <div className="absolute -right-20 -top-20 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="bg-gradient-to-r from-[#0B1F3A] via-[#102a4e] to-[#0B1F3A] rounded-[16px] p-6 sm:p-8 text-white relative overflow-hidden shadow-lg border border-[#1e3a5f]">
+        <div className="absolute -right-20 -top-20 w-80 h-80 bg-[#2E6BE6]/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-[#2E6BE6] text-xs font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
               Connected: PostgreSQL (micropayroll)
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display">
               Welcome back, {user?.full_name || 'Administrator'}!
             </h1>
             <p className="text-sm text-slate-300 max-w-xl">
@@ -80,14 +80,14 @@ export default function OverviewDashboard({ onNavigate }) {
           <div className="flex items-center gap-2">
             <button
               onClick={() => onNavigate('payroll')}
-              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-md shadow-emerald-600/25 transition-all flex items-center space-x-1.5"
+              className="px-4 py-2.5 rounded-lg bg-[#2E6BE6] hover:bg-blue-700 text-white font-semibold text-xs shadow-md shadow-blue-600/25 transition-all flex items-center space-x-1.5 cursor-pointer"
             >
               <CreditCard className="w-4 h-4" />
               <span>Run Payroll</span>
             </button>
             <button
               onClick={() => onNavigate('employees')}
-              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-xs border border-white/10 transition-all flex items-center space-x-1.5"
+              className="px-4 py-2.5 rounded-lg bg-white/10 hover:bg-white/15 text-white font-semibold text-xs border border-white/10 transition-all flex items-center space-x-1.5 cursor-pointer"
             >
               <Users className="w-4 h-4" />
               <span>Add Employee</span>
@@ -98,7 +98,7 @@ export default function OverviewDashboard({ onNavigate }) {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div className="bg-white p-5 rounded-[14px] border border-[#E4E8F0] shadow-sm space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Net Payroll</span>
             <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
@@ -106,7 +106,7 @@ export default function OverviewDashboard({ onNavigate }) {
             </div>
           </div>
           <div>
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
+            <div className="text-2xl font-black text-slate-900 tracking-tight font-display">
               ₱{totalPayroll.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div className="flex items-center text-xs text-emerald-600 font-semibold mt-1">
@@ -116,15 +116,15 @@ export default function OverviewDashboard({ onNavigate }) {
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div className="bg-white p-5 rounded-[14px] border border-[#E4E8F0] shadow-sm space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Staff</span>
-            <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
+            <div className="p-2 rounded-xl bg-blue-50 text-[#2E6BE6]">
               <Users className="w-4 h-4" />
             </div>
           </div>
           <div>
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
+            <div className="text-2xl font-black text-slate-900 tracking-tight font-display">
               {employees.length || 6} Employees
             </div>
             <div className="text-xs text-slate-500 font-medium mt-1">
@@ -133,24 +133,24 @@ export default function OverviewDashboard({ onNavigate }) {
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div className="bg-white p-5 rounded-[14px] border border-[#E4E8F0] shadow-sm space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Microloans Outstanding</span>
-            <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
+            <div className="p-2 rounded-xl bg-blue-50 text-[#2E6BE6]">
               <Landmark className="w-4 h-4" />
             </div>
           </div>
           <div>
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
+            <div className="text-2xl font-black text-slate-900 tracking-tight font-display">
               ₱{totalLoansBalance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <div className="text-xs text-purple-700 font-medium mt-1">
+            <div className="text-xs text-[#2E6BE6] font-medium mt-1">
               {microloans.filter(m => m.status === 'Active').length} Active Amortizations
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div className="bg-white p-5 rounded-[14px] border border-[#E4E8F0] shadow-sm space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Security Integrity</span>
             <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
@@ -158,7 +158,7 @@ export default function OverviewDashboard({ onNavigate }) {
             </div>
           </div>
           <div>
-            <div className="text-2xl font-black text-emerald-600 tracking-tight flex items-center gap-1.5">
+            <div className="text-2xl font-black text-emerald-600 tracking-tight flex items-center gap-1.5 font-display">
               100% Compliant
             </div>
             <div className="text-xs text-slate-500 font-medium mt-1">

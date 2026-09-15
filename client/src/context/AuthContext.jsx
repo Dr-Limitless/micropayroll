@@ -86,6 +86,14 @@ export function AuthProvider({ children }) {
     return login({ role: roleName });
   };
 
+  const updateUser = (updatedFields) => {
+    setUser(prev => {
+      const next = { ...prev, ...updatedFields };
+      localStorage.setItem('mms_user', JSON.stringify(next));
+      return next;
+    });
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -96,7 +104,8 @@ export function AuthProvider({ children }) {
       login,
       verify2FA,
       logout,
-      switchRole
+      switchRole,
+      updateUser
     }}>
       {children}
     </AuthContext.Provider>

@@ -85,6 +85,22 @@ export const api = {
     return res.json();
   },
 
+  async updateProfile(data) {
+    return requestWithRefresh(`${BASE_URL}/auth/profile`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+  },
+
+  async changePassword(data) {
+    return requestWithRefresh(`${BASE_URL}/auth/password`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+  },
+
   // Employees Master CRUD
   async getEmployees() {
     const res = await fetch(`${BASE_URL}/employees`, { headers: getAuthHeaders() });
@@ -305,8 +321,15 @@ export const api = {
     });
     return res.json();
   },
-  async getAuditLogs() {
-    const res = await fetch(`${BASE_URL}/security/audit-logs`, { headers: getAuthHeaders() });
+  async getAuditLogs(params = {}) {
+    const cleanParams = {};
+    Object.keys(params).forEach(k => {
+      if (params[k] !== undefined && params[k] !== null && params[k] !== '') {
+        cleanParams[k] = params[k];
+      }
+    });
+    const q = new URLSearchParams(cleanParams).toString();
+    const res = await fetch(`${BASE_URL}/security/audit-logs${q ? `?${q}` : ''}`, { headers: getAuthHeaders() });
     return res.json();
   },
   async getSecurityStatus() {

@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { canPerformAction } from '../../utils/rbac';
 import PayslipModal from '../payslips/PayslipModal';
 import GovernmentComplianceView from '../payroll/GovernmentComplianceView';
+import { ACCENT, badgeStyle, cardStyle } from '../../theme';
 import {
   CheckCircle2,
   Clock,
@@ -88,8 +89,8 @@ function StatusBadge({ status }) {
     Processed:              'bg-emerald-50 text-emerald-700 border-emerald-200',
     Active:                 'bg-emerald-50 text-emerald-700 border-emerald-200',
     'Paid Off':             'bg-emerald-50 text-emerald-700 border-emerald-200',
-    Reimbursed:             'bg-indigo-50 text-indigo-700 border-indigo-200',
-    'Included in Payroll':  'bg-purple-50 text-purple-700 border-purple-200',
+    Reimbursed:             'bg-blue-50 text-[#2E6BE6] border-blue-200',
+    'Included in Payroll':  'bg-blue-50 text-[#2E6BE6] border-blue-200',
     'Approved for Payroll': 'bg-emerald-50 text-emerald-700 border-emerald-200',
     Submitted:              'bg-blue-50 text-blue-700 border-blue-200',
     Pending:                'bg-amber-50 text-amber-700 border-amber-200',
@@ -107,12 +108,12 @@ function StatusBadge({ status }) {
   );
 }
 
-function SectionHeader({ color = '#7c3aed', title, sub }) {
+function SectionHeader({ color = ACCENT, title, sub }) {
   return (
     <div className="space-y-1 mb-6">
       <div className="flex items-center space-x-2.5">
         <div className="w-1.5 h-6 rounded-full" style={{ background: color }} />
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">{title}</h1>
+        <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight font-display">{title}</h1>
       </div>
       {sub && <p className="text-xs sm:text-sm text-slate-500 pl-4 font-normal">{sub}</p>}
     </div>
@@ -121,14 +122,14 @@ function SectionHeader({ color = '#7c3aed', title, sub }) {
 
 function KpiCard({ label, value, sub, color = 'text-slate-900', icon: Icon }) {
   return (
-    <div className="p-5 bg-white rounded-2xl border border-slate-200/90 shadow-sm flex items-start justify-between">
+    <div className="p-5 bg-white rounded-[14px] border border-[#E4E8F0] shadow-sm flex items-start justify-between">
       <div className="space-y-1">
         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>
-        <div className={`text-2xl font-extrabold tracking-tight ${color}`}>{value}</div>
+        <div className={`text-2xl font-extrabold tracking-tight font-display ${color}`}>{value}</div>
         {sub && <div className="text-xs text-slate-500 font-medium">{sub}</div>}
       </div>
       {Icon && (
-        <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 shrink-0">
+        <div className="w-9 h-9 rounded-xl bg-slate-50 border border-[#E4E8F0] flex items-center justify-center text-slate-500 shrink-0">
           <Icon className="w-4 h-4" />
         </div>
       )}
@@ -233,7 +234,7 @@ function PayslipsModule() {
           <KpiCard label="My Net Take-Home Pay" value={myRecord ? fmt(myRecord.net_pay) : '₱0.00'} sub="Direct Deposit Payout" color="text-emerald-600" icon={CheckCircle2} />
           <KpiCard label="My Gross Compensation" value={myRecord ? fmt(myRecord.gross_pay) : '₱0.00'} sub="Basic + Allowances + OT" color="text-indigo-600" icon={DollarSign} />
           <KpiCard label="My Total Deductions" value={myRecord ? fmt(myRecord.total_deductions) : '₱0.00'} sub="Tax + SSS + PH + HDMF" color="text-rose-600" icon={Sliders} />
-          <KpiCard label="Security Verification" value="SHA-256 Valid" sub="Tamper-proof Digital Seal" color="text-purple-700" icon={FileText} />
+          <KpiCard label="Security Verification" value="SHA-256 Valid" sub="Tamper-proof Digital Seal" color="text-[#2E6BE6]" icon={FileText} />
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
@@ -412,7 +413,7 @@ function TimekeepingModule() {
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-          <span className="px-2 py-0.5 rounded bg-white text-purple-700 font-bold border border-purple-200 shadow-xs">
+          <span className="px-2 py-0.5 rounded bg-white text-[#2E6BE6] font-bold border border-blue-200 shadow-xs">
             Reg. Holiday: 200%
           </span>
           <span className="px-2 py-0.5 rounded bg-white text-amber-700 font-bold border border-amber-200 shadow-xs">
@@ -483,11 +484,11 @@ function TimekeepingModule() {
                     <td className="py-3.5 px-4 text-slate-500 font-mono whitespace-nowrap">{l.date}</td>
                     <td className="py-3.5 px-4 whitespace-nowrap">
                       {l.day_type === 'Regular Holiday' ? (
-                        <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold text-[10px] border border-purple-200">
+                        <span className="px-2 py-0.5 rounded-full bg-[#EEF2FF] text-[#2E6BE6] font-bold text-[10px] border border-blue-200">
                           Regular Holiday (200%)
                         </span>
                       ) : l.day_type === 'Regular Holiday on Rest Day' ? (
-                        <span className="px-2 py-0.5 rounded-full bg-purple-200 text-purple-900 font-bold text-[10px] border border-purple-300">
+                        <span className="px-2 py-0.5 rounded-full bg-[#DBEAFE] text-[#1D4ED8] font-bold text-[10px] border border-blue-300">
                           Reg Holiday & Rest (260%)
                         </span>
                       ) : l.day_type === 'Special Non-Working Day' ? (
@@ -645,25 +646,25 @@ function SalaryStructureModule() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader color="#8b5cf6" title="Salary Structure Configuration" sub="Standardized corporate salary bands, midpoint controls, and non-taxable de minimis brackets" />
+      <SectionHeader color={ACCENT} title="Salary Structure Configuration" sub="Standardized corporate salary bands, midpoint controls, and non-taxable de minimis brackets" />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <KpiCard label="Active Salary Bands" value="5 Grades" sub="Grade 1 (Entry) to Grade 5 (Exec)" color="text-purple-700" icon={Layers} />
+        <KpiCard label="Active Salary Bands" value="5 Grades" sub="Grade 1 (Entry) to Grade 5 (Exec)" color="text-[#2E6BE6]" icon={Layers} />
         <KpiCard label="De Minimis Non-Taxable Cap" value="₱90,000 / yr" sub="BIR Tax-Exempt Benefit Ceiling" color="text-emerald-600" icon={Shield} />
         <KpiCard label="Pay Progression Ratio" value="1.25x - 1.50x" sub="Inter-grade midpoint progression" icon={TrendingUp} />
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+      <div className="bg-white rounded-[14px] border border-[#E4E8F0] shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-[#E4E8F0] flex items-center justify-between">
           <div>
             <h2 className="text-sm font-bold text-slate-900">Corporate Salary Bands & Midpoints (PHP ₱)</h2>
             <p className="text-xs text-slate-400 mt-0.5">Aligned with Philippine Labor Standards & BIR Compensation Framework</p>
           </div>
-          <span className="text-xs px-2.5 py-1 bg-purple-50 text-purple-700 font-semibold rounded-full border border-purple-200">BIR Compliant</span>
+          <span className="text-xs px-2.5 py-1 bg-blue-50 text-[#2E6BE6] font-semibold rounded-full border border-blue-200">BIR Compliant</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-[#F8FAFC] border-b border-[#E4E8F0]">
               <tr>
                 {['Salary Grade', 'Minimum Base', 'Midpoint Base', 'Maximum Base', 'Standard Allowance', 'Target Job Roles', 'Band Spread'].map(h => (
                   <th key={h} className="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase">{h}</th>
@@ -675,7 +676,7 @@ function SalaryStructureModule() {
                 <tr key={g.grade} className="hover:bg-slate-50/70">
                   <td className="py-3.5 px-4 font-bold text-slate-900">{g.grade}</td>
                   <td className="py-3.5 px-4 font-mono text-slate-700">{fmt(g.min)}</td>
-                  <td className="py-3.5 px-4 font-mono font-bold text-purple-700">{fmt(g.mid)}</td>
+                  <td className="py-3.5 px-4 font-mono font-bold text-[#2E6BE6]">{fmt(g.mid)}</td>
                   <td className="py-3.5 px-4 font-mono text-slate-700">{fmt(g.max)}</td>
                   <td className="py-3.5 px-4 font-mono text-emerald-600 font-semibold">+{fmt(g.allowance)}</td>
                   <td className="py-3.5 px-4 text-slate-600">{g.roles}</td>
@@ -730,16 +731,16 @@ function AllowancesModule() {
   return (
     <div className="space-y-6">
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
-      <SectionHeader color="#8b5cf6" title="Allowances & Incentive Management" sub="Transportation, meal allowance, internet subsidy & performance incentive controls" />
+      <SectionHeader color={ACCENT} title="Allowances & Incentive Management" sub="Transportation, meal allowance, internet subsidy & performance incentive controls" />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <KpiCard label="Total Monthly Allowances" value={fmt(totalAllowances)} sub="Added directly to Gross Pay" color="text-purple-700" icon={DollarSign} />
+        <KpiCard label="Total Monthly Allowances" value={fmt(totalAllowances)} sub="Added directly to Gross Pay" color="text-[#2E6BE6]" icon={DollarSign} />
         <KpiCard label="De Minimis Threshold" value="₱90,000 / yr" sub="Tax-exempt employee benefits" color="text-emerald-600" icon={Shield} />
         <KpiCard label="Active Recipients" value={`${compensation.length} Staff`} sub="Receiving recurring allowance" icon={Users} />
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+      <div className="bg-white rounded-[14px] border border-[#E4E8F0] shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-[#E4E8F0] flex items-center justify-between">
           <div>
             <h2 className="text-sm font-bold text-slate-900">Employee Allowance Allocations</h2>
             <p className="text-xs text-slate-400 mt-0.5">Click Edit on any employee row to adjust their recurring monthly allowance</p>
@@ -748,7 +749,7 @@ function AllowancesModule() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-[#F8FAFC] border-b border-[#E4E8F0]">
               <tr>
                 {['Employee', 'Department', 'Position', 'Basic Salary', 'Monthly Allowance', 'Tax Treatment', 'Actions'].map(h => (
                   <th key={h} className="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase">{h}</th>
@@ -768,11 +769,11 @@ function AllowancesModule() {
                         type="number"
                         value={editVal}
                         onChange={e => setEditVal(e.target.value)}
-                        className="w-28 px-2 py-1 border border-purple-300 rounded-lg text-xs font-mono outline-none focus:ring-2 focus:ring-purple-400"
+                        className="w-28 px-2 py-1 border border-blue-300 rounded-lg text-xs font-mono outline-none focus:ring-2 focus:ring-[#2E6BE6]"
                         autoFocus
                       />
                     ) : (
-                      <span className="font-mono font-bold text-purple-700">{fmt(c.allowance)}</span>
+                      <span className="font-mono font-bold text-[#2E6BE6]">{fmt(c.allowance)}</span>
                     )}
                   </td>
                   <td className="py-3.5 px-4">
@@ -783,7 +784,7 @@ function AllowancesModule() {
                   <td className="py-3.5 px-4 text-right">
                     {editId === c.id ? (
                       <div className="flex items-center gap-1 justify-end">
-                        <button onClick={() => handleSaveAllowance(c.id)} className="px-2.5 py-1 rounded bg-purple-600 text-white font-semibold flex items-center gap-1">
+                        <button onClick={() => handleSaveAllowance(c.id)} className="px-2.5 py-1 rounded-lg bg-[#2E6BE6] text-white font-semibold flex items-center gap-1">
                           <Save className="w-3 h-3" /> Save
                         </button>
                         <button onClick={() => setEditId(null)} className="p-1 rounded bg-slate-100 text-slate-600">
@@ -791,7 +792,7 @@ function AllowancesModule() {
                         </button>
                       </div>
                     ) : canPerformAction(user?.role, 'EDIT_ALLOWANCES') ? (
-                      <button onClick={() => { setEditId(c.id); setEditVal(c.allowance || 0); }} className="px-2.5 py-1 rounded bg-purple-50 text-purple-700 font-semibold hover:bg-purple-100 flex items-center gap-1 ml-auto">
+                      <button onClick={() => { setEditId(c.id); setEditVal(c.allowance || 0); }} className="px-2.5 py-1 rounded-lg bg-[#EFF6FF] text-[#2E6BE6] font-semibold hover:bg-blue-100 flex items-center gap-1 ml-auto border border-blue-200">
                         <Edit3 className="w-3 h-3" /> Edit
                       </button>
                     ) : (
@@ -868,16 +869,16 @@ function SalaryAdjustmentModule() {
     <div className="space-y-6">
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <SectionHeader color="#8b5cf6" title="Salary Adjustment Management" sub="Executive promotion, merit raise workflow & historical compensation versioning" />
+        <SectionHeader color={ACCENT} title="Salary Adjustment Management" sub="Executive promotion, merit raise workflow & historical compensation versioning" />
         {canPerformAction(user?.role, 'PROPOSE_SALARY_ADJUSTMENT') && (
-          <button onClick={() => setShowAdjModal(true)} className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-md shadow-purple-600/20 cursor-pointer">
+          <button onClick={() => setShowAdjModal(true)} className="px-3.5 py-2 rounded-lg bg-[#2E6BE6] hover:bg-blue-700 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-md shadow-blue-600/20 cursor-pointer">
             <Plus className="w-3.5 h-3.5" /><span>Request Salary Adjustment</span>
           </button>
         )}
       </div>
 
-      <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 flex items-center gap-3 text-xs text-purple-900">
-        <Sparkles className="w-5 h-5 text-purple-600 shrink-0" />
+      <div className="bg-blue-50 border border-blue-200 rounded-[14px] p-4 flex items-center gap-3 text-xs text-blue-900">
+        <Sparkles className="w-5 h-5 text-[#2E6BE6] shrink-0" />
         <div>
           <span className="font-bold">Automated Integrity Rule:</span> Pending adjustments do NOT alter current payroll. Once <strong>Approved</strong>, the new base salary immediately takes effect starting on its effective date cut-off.
         </div>
@@ -889,14 +890,14 @@ function SalaryAdjustmentModule() {
         <KpiCard label="Total Adjustments Filed" value={adjustments.length} sub="Fiscal year 2024" icon={Briefcase} />
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+      <div className="bg-white rounded-[14px] border border-[#E4E8F0] shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-[#E4E8F0] flex items-center justify-between">
           <h2 className="text-sm font-bold text-slate-900">Salary Adjustment Requests Queue</h2>
           <button onClick={load} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"><RefreshCw className="w-4 h-4" /></button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-[#F8FAFC] border-b border-[#E4E8F0]">
               <tr>
                 {['Employee', 'Previous Base', 'Proposed Base', 'Increment', 'Effective Date', 'Justification', 'Status', 'Actions'].map(h => (
                   <th key={h} className="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase">{h}</th>
@@ -912,7 +913,7 @@ function SalaryAdjustmentModule() {
                   <tr key={adj.id} className="hover:bg-slate-50/70">
                     <td className="py-3.5 px-4 font-bold text-slate-900">{adj.employee_name}</td>
                     <td className="py-3.5 px-4 font-mono text-slate-500">{fmt(adj.previous_salary)}</td>
-                    <td className="py-3.5 px-4 font-mono font-bold text-purple-700">{fmt(adj.proposed_salary)}</td>
+                    <td className="py-3.5 px-4 font-mono font-bold text-[#2E6BE6]">{fmt(adj.proposed_salary)}</td>
                     <td className="py-3.5 px-4 font-mono text-emerald-600 font-semibold">+{fmt(inc)} (+{pct}%)</td>
                     <td className="py-3.5 px-4 font-mono text-slate-600">{adj.effective_date}</td>
                     <td className="py-3.5 px-4 text-slate-600 max-w-xs truncate">{adj.reason}</td>
@@ -920,8 +921,8 @@ function SalaryAdjustmentModule() {
                     <td className="py-3.5 px-4 text-right space-x-1">
                       {isPending && canPerformAction(user?.role, 'APPROVE_SALARY_ADJUSTMENT') && (
                         <>
-                          <button onClick={() => handleAdjustmentStatus(adj.id, 'Approved')} className="px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 font-semibold hover:bg-emerald-100">Approve</button>
-                          <button onClick={() => handleAdjustmentStatus(adj.id, 'Rejected')} className="px-2.5 py-1 rounded bg-rose-50 text-rose-700 font-semibold hover:bg-rose-100">Reject</button>
+                          <button onClick={() => handleAdjustmentStatus(adj.id, 'Approved')} className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-semibold hover:bg-emerald-100">Approve</button>
+                          <button onClick={() => handleAdjustmentStatus(adj.id, 'Rejected')} className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 font-semibold hover:bg-rose-100">Reject</button>
                         </>
                       )}
                       {isPending && !canPerformAction(user?.role, 'APPROVE_SALARY_ADJUSTMENT') && (
@@ -944,7 +945,7 @@ function SalaryAdjustmentModule() {
 
       {showAdjModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+          <div className="bg-white rounded-[14px] w-full max-w-md p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-900">Request Salary Adjustment</h3>
               <button onClick={() => setShowAdjModal(false)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X className="w-4 h-4" /></button>
@@ -952,26 +953,26 @@ function SalaryAdjustmentModule() {
             <div className="space-y-3 text-xs">
               <div>
                 <label className="font-semibold text-slate-600 mb-1 block">Employee *</label>
-                <select value={adjForm.employee_id} onChange={e => setAdjForm(f => ({ ...f, employee_id: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-purple-500 bg-white">
+                <select value={adjForm.employee_id} onChange={e => setAdjForm(f => ({ ...f, employee_id: e.target.value }))} className="w-full px-3 py-2 border border-[#E4E8F0] rounded-lg outline-none focus:border-[#2E6BE6] bg-white">
                   {compensation.map(c => <option key={c.id} value={c.id}>{c.name} ({c.position})</option>)}
                 </select>
               </div>
               <div>
                 <label className="font-semibold text-slate-600 mb-1 block">Proposed Monthly Basic (₱) *</label>
-                <input type="number" value={adjForm.proposed_salary} onChange={e => setAdjForm(f => ({ ...f, proposed_salary: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-purple-500" />
+                <input type="number" value={adjForm.proposed_salary} onChange={e => setAdjForm(f => ({ ...f, proposed_salary: e.target.value }))} className="w-full px-3 py-2 border border-[#E4E8F0] rounded-lg outline-none focus:border-[#2E6BE6]" />
               </div>
               <div>
                 <label className="font-semibold text-slate-600 mb-1 block">Effective Date *</label>
-                <input type="date" value={adjForm.effective_date} onChange={e => setAdjForm(f => ({ ...f, effective_date: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-purple-500" />
+                <input type="date" value={adjForm.effective_date} onChange={e => setAdjForm(f => ({ ...f, effective_date: e.target.value }))} className="w-full px-3 py-2 border border-[#E4E8F0] rounded-lg outline-none focus:border-[#2E6BE6]" />
               </div>
               <div>
                 <label className="font-semibold text-slate-600 mb-1 block">Justification / Reason *</label>
-                <textarea rows={3} value={adjForm.reason} onChange={e => setAdjForm(f => ({ ...f, reason: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-purple-500" placeholder="e.g. Annual merit promotion based on exceptional delivery." />
+                <textarea rows={3} value={adjForm.reason} onChange={e => setAdjForm(f => ({ ...f, reason: e.target.value }))} className="w-full px-3 py-2 border border-[#E4E8F0] rounded-lg outline-none focus:border-[#2E6BE6]" placeholder="e.g. Annual merit promotion based on exceptional delivery." />
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => setShowAdjModal(false)} className="px-4 py-2 rounded-xl text-xs text-slate-600 hover:bg-slate-100">Cancel</button>
-              <button onClick={handleCreateAdjustment} className="px-4 py-2 rounded-xl text-xs bg-purple-600 text-white font-semibold hover:bg-purple-700">Submit Request</button>
+              <button onClick={() => setShowAdjModal(false)} className="px-4 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-100">Cancel</button>
+              <button onClick={handleCreateAdjustment} className="px-4 py-2 rounded-lg text-xs bg-[#2E6BE6] text-white font-semibold hover:bg-blue-700">Submit Request</button>
             </div>
           </div>
         </div>
@@ -2100,13 +2101,13 @@ function HMOContributionModule() {
             </div>
           </div>
 
-          <div className="p-4 rounded-xl border border-purple-200 bg-purple-50/50 space-y-2">
-            <div className="font-bold text-slate-900 flex justify-between"><span>Pag-IBIG / HDMF</span><span className="text-purple-700">RA 9679</span></div>
+          <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/50 space-y-2">
+            <div className="font-bold text-slate-900 flex justify-between"><span>Pag-IBIG / HDMF</span><span className="text-[#2E6BE6]">RA 9679</span></div>
             <div className="text-[11px] text-slate-500">Mandatory savings program for housing assistance</div>
-            <div className="space-y-1 pt-1 border-t border-purple-100">
+            <div className="space-y-1 pt-1 border-t border-blue-100">
               <div className="flex justify-between"><span className="text-slate-500">Employee Share:</span><span className="font-mono font-bold">₱100.00</span></div>
               <div className="flex justify-between"><span className="text-slate-500">Employer Share:</span><span className="font-mono font-bold">₱100.00</span></div>
-              <div className="flex justify-between font-bold text-purple-900 pt-1 border-t"><span>Total Remittance:</span><span className="font-mono">₱200.00</span></div>
+              <div className="flex justify-between font-bold text-blue-900 pt-1 border-t"><span>Total Remittance:</span><span className="font-mono">₱200.00</span></div>
             </div>
           </div>
         </div>
@@ -2275,11 +2276,11 @@ function RealtimeDashboardModule() {
             <KpiCard label="Gross Payroll Basis" value={summary.total_gross ? fmt(summary.total_gross, summary.total_gross_raw) : '₱2,185,420.00'} sub={`${month} cut-off`} color="text-slate-900" icon={DollarSign} />
             <KpiCard label="Statutory Deductions" value={summary.total_deductions ? fmt(summary.total_deductions, summary.total_deductions_raw) : '₱840,250.00'} sub="BIR + SSS + PH + HDMF" color="text-rose-600" icon={Sliders} />
             <KpiCard label="Net Disbursed Funds" value={summary.total_net ? fmt(summary.total_net, summary.total_net_raw) : '₱1,345,170.00'} sub="Direct Deposit Payout" color="text-emerald-600" icon={CheckCircle2} />
-            <KpiCard label="Processed Staff" value={summary.employees_processed || '142/160'} sub="100% Audited" color="text-purple-700" icon={Users} />
+            <KpiCard label="Processed Staff" value={summary.employees_processed || '142/160'} sub="100% Audited" color="text-[#2E6BE6]" icon={Users} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5">
+            <div className="bg-white rounded-[14px] border border-[#E4E8F0] shadow-sm p-5">
               <h3 className="text-sm font-bold text-slate-900 mb-4">Department Payroll Distribution</h3>
               <div className="space-y-4">
                 {(data?.department_breakdown || [
@@ -2295,17 +2296,17 @@ function RealtimeDashboardModule() {
                       <span className="font-mono font-bold text-slate-900">{fmt(d.total_gross)}</span>
                     </div>
                     <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${d.percentage || 20}%` }} />
+                      <div className="h-full bg-[#2E6BE6] rounded-full transition-all duration-500" style={{ width: `${d.percentage || 20}%` }} />
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 space-y-4">
+            <div className="bg-white rounded-[14px] border border-[#E4E8F0] shadow-sm p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-slate-900">Cryptographic Security & System Audit</h3>
-                <span className="text-xs px-2.5 py-1 bg-purple-50 text-purple-700 font-semibold rounded-full border border-purple-100 flex items-center gap-1">
+                <span className="text-xs px-2.5 py-1 bg-blue-50 text-[#2E6BE6] font-semibold rounded-full border border-blue-100 flex items-center gap-1">
                   <Shield className="w-3 h-3" /> AES-256 Validated
                 </span>
               </div>
@@ -2400,25 +2401,25 @@ function FinancialReportingModule() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm space-y-1">
+        <div className="p-5 rounded-[14px] border border-[#E4E8F0] bg-white shadow-sm space-y-1">
           <span className="text-[11px] font-bold text-slate-400 uppercase">Gross Salaries Expense</span>
           <div className="text-2xl font-black text-slate-900">{summary.total_gross ? fmt(summary.total_gross, summary.total_gross_raw) : '₱2,185,420.00'}</div>
           <div className="text-xs text-slate-500 font-medium">Includes Basic + Overtime + Allowances</div>
         </div>
-        <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm space-y-1">
+        <div className="p-5 rounded-[14px] border border-[#E4E8F0] bg-white shadow-sm space-y-1">
           <span className="text-[11px] font-bold text-slate-400 uppercase">Employer Statutory Burden</span>
-          <div className="text-2xl font-black text-purple-700">₱385,420.00</div>
+          <div className="text-2xl font-black text-[#2E6BE6]">₱385,420.00</div>
           <div className="text-xs text-slate-500 font-medium">SSS ER + PhilHealth ER + HDMF ER</div>
         </div>
-        <div className="p-5 rounded-2xl border border-emerald-200 bg-emerald-50/60 shadow-sm space-y-1">
+        <div className="p-5 rounded-[14px] border border-emerald-200 bg-emerald-50/60 shadow-sm space-y-1">
           <span className="text-[11px] font-bold text-emerald-800 uppercase">Total Company Labor Cost</span>
           <div className="text-2xl font-black text-emerald-700">₱2,565,420.00</div>
           <div className="text-xs text-emerald-800 font-medium">Fully loaded corporate payroll liability</div>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+      <div className="bg-white rounded-[14px] border border-[#E4E8F0] shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-[#E4E8F0] flex items-center justify-between">
           <h2 className="text-sm font-bold text-slate-900">Financial Payroll Ledger Summary</h2>
           {canPerformAction(user?.role, 'EXPORT_FINANCIAL_LEDGER') && (
             <button onClick={handleExportCSV} className="text-xs font-semibold text-emerald-700 hover:underline flex items-center gap-1 cursor-pointer">
@@ -2614,11 +2615,11 @@ export default function ModuleContentView({ moduleId, moduleLabel, categoryLabel
   // Fallback
   return (
     <div className="space-y-6">
-      <SectionHeader color="#7c3aed" title={moduleLabel} sub={`${categoryLabel} — Microfinancial Management System`} />
+      <SectionHeader color={ACCENT} title={moduleLabel} sub={`${categoryLabel} — Microfinancial Management System`} />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard label="Active Enrolled Staff" value="160 Employees" sub="100% Statutory Compliant" color="text-emerald-600" />
         <KpiCard label="Total Module Allocation" value="₱2,185,420.00" sub="Verified by HR Manager" />
-        <KpiCard label="Audit Verification" value="AES-256 Validated" sub="PostgreSQL: micropayroll" color="text-purple-700" />
+        <KpiCard label="Audit Verification" value="AES-256 Validated" sub="PostgreSQL: micropayroll" color="text-[#2E6BE6]" />
       </div>
     </div>
   );

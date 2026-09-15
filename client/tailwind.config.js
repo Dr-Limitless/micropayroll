@@ -8,16 +8,29 @@ export default {
     extend: {
       colors: {
         brand: {
-          dark: '#0a0f24',
-          navy: '#0f172a',
+          dark: '#0B1F3A',
+          navy: '#0B1F3A',
           card: '#131b34',
           border: '#1e293b',
-          accent: '#10b981',
-          accentHover: '#059669',
+          accent: '#2E6BE6',
+          accentHover: '#1d58cc',
+        },
+        mf: {
+          navy: '#0B1F3A',
+          accent: '#2E6BE6',
+          bg: '#F5F7FA',
+          card: '#FFFFFF',
+          border: '#E4E8F0',
+          borderDark: '#D0D5DD',
+          text: '#101828',
+          label: '#344054',
+          muted: '#64748B',
+          subtle: '#94A3B8',
         }
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        sans: ['"IBM Plex Sans"', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        display: ['"Plus Jakarta Sans"', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       }
     },
   },

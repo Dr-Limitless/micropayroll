@@ -522,6 +522,75 @@ let microloans = [
 ];
 
 // =========================================================================
+let auditLogs = [
+  {
+    id: 1,
+    user_id: 2,
+    user_name: 'Alex Vance',
+    user_role: 'admin',
+    action: 'SYSTEM_BOOTSTRAP',
+    entity: 'System',
+    entity_id: 'SYS-INIT',
+    ip_address: '127.0.0.1',
+    details: { message: 'Microfinancial Management System (MMS) initialized with AES-256 encryption' },
+    cryptographic_checksum: '8f4c2e6b1a9d0f3e7c5b8a2d4e6f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f',
+    created_at: new Date(Date.now() - 3600000 * 24 * 3).toISOString()
+  },
+  {
+    id: 2,
+    user_id: 3,
+    user_name: 'Marcus Chen',
+    user_role: 'officer',
+    action: 'PAYROLL_CALCULATION_RUN',
+    entity: 'PayrollPeriod',
+    entity_id: 'July 2024',
+    ip_address: '192.168.1.104',
+    details: { period: 'July 2024', total_gross: 2180000, total_net: 1340000, employees_count: 160 },
+    cryptographic_checksum: '3a7b9c1d5e2f4a8b0c6d8e2f4a6b8c0d2e4f6a8b0c2d4e6f8a0b2c4d6e8f0a2b',
+    created_at: new Date(Date.now() - 3600000 * 24 * 2).toISOString()
+  },
+  {
+    id: 3,
+    user_id: 1,
+    user_name: 'Liza Gomez',
+    user_role: 'manager',
+    action: 'OVERTIME_APPROVED',
+    entity: 'AttendanceRecord',
+    entity_id: 'ATT-102',
+    ip_address: '192.168.1.102',
+    details: { employee: 'Maria Santos', date: '2024-07-15', overtime_hours: 3.5, status: 'Approved' },
+    cryptographic_checksum: '5c2e8b0d4f6a1c3e7b9d2f5a8c0e3b6d9f1a4c7e0b3d6f9a2c5e8b1d4f7a0c3e',
+    created_at: new Date(Date.now() - 3600000 * 18).toISOString()
+  },
+  {
+    id: 4,
+    user_id: 4,
+    user_name: 'Diana Sterling',
+    user_role: 'director',
+    action: 'PAYROLL_APPROVED',
+    entity: 'PayrollPeriod',
+    entity_id: 'July 2024',
+    ip_address: '192.168.1.101',
+    details: { period: 'July 2024', approved_by: 'Diana Sterling', status: 'Approved' },
+    cryptographic_checksum: '7b9d1f3a5c7e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d',
+    created_at: new Date(Date.now() - 3600000 * 8).toISOString()
+  },
+  {
+    id: 5,
+    user_id: 5,
+    user_name: 'Maria Santos',
+    user_role: 'employee',
+    action: 'CLAIM_SUBMITTED',
+    entity: 'Claim',
+    entity_id: 'CLM-2024-001',
+    ip_address: '192.168.1.108',
+    details: { claim_code: 'CLM-2024-001', amount: 3500, claim_type: 'Medical & Dental' },
+    cryptographic_checksum: '9d2f4a6b8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6b8c0e2b',
+    created_at: new Date(Date.now() - 3600000 * 3).toISOString()
+  }
+];
+
+// =========================================================================
 // 5.5 INTER-ROLE NOTIFICATIONS & WORKFLOW TASK QUEUE
 // =========================================================================
 let notifications = [
@@ -3235,11 +3304,89 @@ const db = {
     };
   },
 
+  updateUserProfile: async (userId, { full_name, email, avatar_url } = {}) => {
+    const user = initialUsers.find(u => u.id === Number(userId));
+    if (!user) return null;
+    if (full_name) {
+      user.full_name = full_name.trim();
+      user.initials = user.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    }
+    if (email) {
+      user.email = email.trim().toLowerCase();
+    }
+    if (avatar_url !== undefined) {
+      user.avatar_url = avatar_url;
+    }
+    // Sync to masterEmployees if exists
+    const emp = masterEmployees.find(e => e.id === Number(userId) || e.email.toLowerCase() === user.email.toLowerCase());
+    if (emp) {
+      if (full_name) {
+        const parts = full_name.trim().split(' ');
+        emp.first_name = parts[0] || emp.first_name;
+        emp.last_name = parts.slice(1).join(' ') || emp.last_name;
+        emp.initials = user.initials;
+      }
+      if (email) emp.email = user.email;
+    }
+    return user;
+  },
+
+  updateUserPassword: async (userId, passwordHash) => {
+    const user = initialUsers.find(u => u.id === Number(userId));
+    if (!user) return false;
+    user.password_hash = passwordHash;
+    return true;
+  },
+
   // --- Audit Logs ---
   addAuditLog: async (log) => {
-    return { id: 1, ...log, timestamp: new Date().toISOString() };
+    const newId = auditLogs.length > 0 ? Math.max(...auditLogs.map(l => l.id)) + 1 : 1;
+    const entry = {
+      id: newId,
+      user_id: log.user_id ? Number(log.user_id) : null,
+      user_name: log.user_name || 'System Administrator',
+      user_role: log.user_role || 'admin',
+      action: log.action || 'SYSTEM_ACTION',
+      entity: log.entity || 'System',
+      entity_id: log.entity_id ? String(log.entity_id) : 'SYS',
+      ip_address: log.ip_address || '127.0.0.1',
+      details: log.details || {},
+      cryptographic_checksum: generateAuditChecksum(log),
+      created_at: new Date().toISOString()
+    };
+    auditLogs.unshift(entry);
+    if (auditLogs.length > 500) auditLogs.pop();
+    return entry;
   },
-  getAuditLogs: async () => [],
+
+  getAuditLogs: async ({ limit = 200, action, entity, search, user_id, user_role, user_name } = {}) => {
+    let logs = [...auditLogs];
+    // Scoping for non-admins (employees and officers see their own logs)
+    if (user_role === 'employee' || user_role === 'officer') {
+      logs = logs.filter(l => 
+        (user_id && Number(l.user_id) === Number(user_id)) ||
+        (user_name && l.user_name && l.user_name.toLowerCase() === user_name.toLowerCase())
+      );
+    }
+    if (action && action !== 'ALL') {
+      logs = logs.filter(l => l.action === action);
+    }
+    if (entity && entity !== 'ALL') {
+      logs = logs.filter(l => l.entity === entity);
+    }
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase();
+      logs = logs.filter(l => 
+        (l.action || '').toLowerCase().includes(q) ||
+        (l.entity || '').toLowerCase().includes(q) ||
+        (l.user_name || '').toLowerCase().includes(q) ||
+        (l.entity_id || '').toLowerCase().includes(q) ||
+        (l.ip_address || '').toLowerCase().includes(q) ||
+        JSON.stringify(l.details || {}).toLowerCase().includes(q)
+      );
+    }
+    return logs.slice(0, Number(limit) || 200);
+  },
 
   // --- Notifications ---
   getNotifications: (role) => {

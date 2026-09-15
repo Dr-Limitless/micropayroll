@@ -5,14 +5,14 @@ import {
   Lock, 
   Eye, 
   EyeOff, 
-  Building2,
-  ArrowRight,
-  AlertCircle,
-  ShieldCheck,
-  ArrowLeft,
-  Loader2,
-  CheckCircle2
+  ShieldCheck, 
+  ArrowLeft, 
+  Loader2, 
+  CheckCircle2,
+  Users
 } from 'lucide-react';
+import { ACCENT } from '../../theme';
+import { api } from '../../services/api';
 
 export default function FigmaSignInForm({ onLoginSuccess }) {
   const { login, verify2FA, loading: authLoading } = useAuth();
@@ -24,10 +24,20 @@ export default function FigmaSignInForm({ onLoginSuccess }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successUser, setSuccessUser] = useState(null);
+  const [personas, setPersonas] = useState([]);
 
   // 2FA step state
   const [totpCode, setTotpCode] = useState('');
   const totpRef = useRef(null);
+
+  useEffect(() => {
+    // Load available test personas
+    api.getPersonas().then(data => {
+      if (data && data.personas) {
+        setPersonas(data.personas);
+      }
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (step === '2fa' && totpRef.current) {
@@ -36,9 +46,9 @@ export default function FigmaSignInForm({ onLoginSuccess }) {
   }, [step]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!email.trim()) {
-      setErrorMsg('Please enter your email address.');
+      setErrorMsg('Please enter your work email.');
       return;
     }
     setIsSubmitting(true);
@@ -58,7 +68,7 @@ export default function FigmaSignInForm({ onLoginSuccess }) {
       setErrorMsg('');
     } else {
       setIsSubmitting(false);
-      setErrorMsg(res.error || 'Invalid corporate email. Please check your credentials.');
+      setErrorMsg(res.error || 'Invalid corporate credentials. Please try again.');
     }
   };
 
@@ -87,30 +97,27 @@ export default function FigmaSignInForm({ onLoginSuccess }) {
     }
   };
 
-  const handleBackToLogin = () => {
-    setStep('credentials');
-    setTotpCode('');
+  const selectPersona = (pEmail) => {
+    setEmail(pEmail);
+    setPassword('password123');
     setErrorMsg('');
   };
 
   // --- Success Splash Animation ---
   if (successUser) {
     return (
-      <div className="w-full max-w-[420px] mx-auto flex flex-col justify-center items-center py-10 text-center animate-pulse-success">
-        <div className="w-16 h-16 rounded-3xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-xl shadow-emerald-500/20 mb-5">
-          <CheckCircle2 className="w-9 h-9" />
+      <div style={{ maxWidth: 420, margin: '0 auto', textAlign: 'center', animation: 'fadeInUp .4s ease both', padding: '40px 0' }}>
+        <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', animation: 'popIn .5s ease both' }}>
+          <CheckCircle2 style={{ width: 32, height: 32, color: '#15803D' }} />
         </div>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-3 py-1 rounded-full mb-3">
-          Session Authenticated
-        </span>
-        <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-1">
+        <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 800, fontSize: 24, color: '#101828', marginBottom: 6 }}>
           Welcome back, {successUser.full_name || 'User'}!
-        </h2>
-        <p className="text-xs text-slate-500 font-medium mb-6">
-          Initializing your enterprise dashboard &amp; permissions...
-        </p>
-        <div className="w-48 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-          <div className="h-full w-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full animate-pulse" />
+        </div>
+        <div style={{ fontSize: 13.5, color: '#64748B', marginBottom: 24 }}>
+          Initializing your operations dashboard &amp; permissions...
+        </div>
+        <div style={{ width: 180, height: 4, background: '#E4E8F0', borderRadius: 10, margin: '0 auto', overflow: 'hidden' }}>
+          <div style={{ width: '100%', height: '100%', background: ACCENT, animation: 'shimmer 1.5s infinite' }} />
         </div>
       </div>
     );
@@ -119,48 +126,27 @@ export default function FigmaSignInForm({ onLoginSuccess }) {
   // --- Step 2: 2FA Verification UI ---
   if (step === '2fa') {
     return (
-      <div className="w-full max-w-[420px] mx-auto flex flex-col justify-center py-6 sm:py-8 animate-step-slide">
-        {/* Brand Header */}
-        <div className="flex items-center space-x-3 mb-7">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-600/25 shrink-0">
-            <Building2 className="w-6 h-6 text-white" />
-          </div>
-          <div className="flex items-center space-x-2.5 flex-wrap gap-y-1">
-            <div className="flex items-baseline space-x-1.5">
-              <span className="font-black text-slate-900 text-lg tracking-tight">MICROFINANCIAL</span>
-              <span className="font-black text-emerald-600 text-lg tracking-tight">MMS</span>
-            </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 rounded-full">
-              HR &amp; Payroll Platform
-            </span>
-          </div>
+      <div style={{ maxWidth: 420, margin: '0 auto', animation: 'fadeInUp .35s ease both' }}>
+        <div style={{ width: 44, height: 44, borderRadius: 12, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+          <ShieldCheck style={{ width: 22, height: 22, color: ACCENT }} />
+        </div>
+        <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 800, fontSize: 24, color: '#101828' }}>
+          Two-Factor Authentication
+        </div>
+        <div style={{ fontSize: 13.5, color: '#64748B', marginTop: 4, marginBottom: 28 }}>
+          Enter the 6-digit code for <strong style={{ color: '#344054' }}>{email}</strong>
         </div>
 
-        {/* 2FA Heading */}
-        <div className="space-y-1.5 mb-7">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center mb-3 shadow-sm">
-            <ShieldCheck className="w-6 h-6 text-emerald-600" />
-          </div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">
-            VERIFY 2FA
-          </h1>
-          <p className="text-sm text-slate-500 font-medium">
-            Enter the 6-digit code from Google Authenticator for <span className="font-semibold text-slate-700">{email}</span>
-          </p>
-        </div>
-
-        {/* 2FA Form */}
-        <form onSubmit={handleTotpSubmit} className="space-y-4">
+        <form onSubmit={handleTotpSubmit}>
           {errorMsg && (
-            <div className="p-3 text-xs rounded-2xl bg-red-50 text-red-700 border border-red-200 flex items-center space-x-2 animate-in fade-in">
-              <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
-              <span>{errorMsg}</span>
+            <div style={{ padding: '10px 14px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FEE2E2', color: '#DC2626', fontSize: 13, marginBottom: 16 }}>
+              {errorMsg}
             </div>
           )}
 
-          <div>
-            <label className="block text-xs font-bold text-slate-800 mb-2">
-              Authentication Code
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ fontSize: 12.5, fontWeight: 600, color: '#344054', marginBottom: 6, display: 'block' }}>
+              6-Digit Authenticator Code
             </label>
             <input
               ref={totpRef}
@@ -170,39 +156,64 @@ export default function FigmaSignInForm({ onLoginSuccess }) {
               maxLength={6}
               required
               value={totpCode}
-              onChange={(e) => {
-                const val = e.target.value.replace(/[^0-9]/g, '');
-                setTotpCode(val);
-              }}
+              onChange={(e) => setTotpCode(e.target.value.replace(/[^0-9]/g, ''))}
               placeholder="000000"
-              className="w-full px-5 py-4 text-2xl font-black tracking-[0.4em] text-center rounded-2xl bg-[#f0f4f9] border border-transparent focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all text-slate-900 placeholder:text-slate-300"
+              style={{
+                width: '100%',
+                padding: '13px 14px',
+                border: '1px solid #D0D5DD',
+                borderRadius: 9,
+                fontSize: 22,
+                fontWeight: 800,
+                letterSpacing: '0.3em',
+                textAlign: 'center',
+                color: '#101828',
+                background: '#fff',
+                outline: 'none'
+              }}
             />
-            <p className="text-[11px] text-slate-400 mt-2 text-center">
-              Enter the rotating 6-digit code from your app
-            </p>
           </div>
 
           <button
             type="submit"
             disabled={isSubmitting || authLoading || totpCode.length < 6}
-            className="w-full mt-2 py-3.5 px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-base shadow-xl shadow-emerald-600/25 hover:shadow-emerald-600/35 transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98]"
+            style={{
+              width: '100%',
+              padding: 13,
+              border: 'none',
+              borderRadius: 9,
+              background: ACCENT,
+              color: '#fff',
+              fontSize: 14.5,
+              fontWeight: 600,
+              cursor: isSubmitting || authLoading || totpCode.length < 6 ? 'not-allowed' : 'pointer',
+              opacity: isSubmitting || totpCode.length < 6 ? 0.75 : 1,
+              transition: 'opacity .15s'
+            }}
           >
-            {isSubmitting || authLoading ? (
-              <span className="flex items-center space-x-2">
-                <Loader2 className="w-4 h-4 animate-spin text-white" />
-                <span>Verifying...</span>
-              </span>
-            ) : (
-              <span>Verify &amp; Continue</span>
-            )}
+            {isSubmitting ? 'Verifying...' : 'Verify & Continue'}
           </button>
 
           <button
             type="button"
-            onClick={handleBackToLogin}
-            className="w-full py-2 text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
+            onClick={() => { setStep('credentials'); setTotpCode(''); setErrorMsg(''); }}
+            style={{
+              width: '100%',
+              marginTop: 14,
+              padding: 8,
+              border: 'none',
+              background: 'transparent',
+              color: '#64748B',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6
+            }}
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
+            <ArrowLeft style={{ width: 14, height: 14 }} />
             <span>Back to sign in</span>
           </button>
         </form>
@@ -210,130 +221,178 @@ export default function FigmaSignInForm({ onLoginSuccess }) {
     );
   }
 
-
+  // --- Step 1: Credentials UI matching microfin-os-main ---
   return (
-    <div className="w-full max-w-[420px] mx-auto flex flex-col justify-center py-6 sm:py-8 animate-login-enter">
-      {/* Brand Header */}
-      <div className="flex items-center space-x-3 mb-7">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-600/25 shrink-0">
-          <Building2 className="w-6 h-6 text-white" />
-        </div>
-        <div className="flex items-center space-x-2.5 flex-wrap gap-y-1">
-          <div className="flex items-baseline space-x-1.5">
-            <span className="font-black text-slate-900 text-lg tracking-tight">MICROFINANCIAL</span>
-            <span className="font-black text-emerald-600 text-lg tracking-tight">MMS</span>
-          </div>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 rounded-full">
-            HR & Payroll Platform
-          </span>
-        </div>
+    <div style={{ maxWidth: 440, margin: '0 auto', animation: 'loginSlideIn .5s ease both' }}>
+      {/* Title matching microfin-os-main */}
+      <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 800, fontSize: 26, color: '#101828', letterSpacing: '-.02em' }}>
+        Welcome back
+      </div>
+      <div style={{ fontSize: 14, color: '#64748B', marginTop: 6, marginBottom: 28 }}>
+        Sign in to your operations dashboard
       </div>
 
-      {/* Main Heading */}
-      <div className="space-y-1.5 mb-7">
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">
-          SIGN IN NOW
-        </h1>
-        <p className="text-sm text-slate-500 font-medium">
-          Sign in to your Microfinancial Management System account
-        </p>
-      </div>
+      {errorMsg && (
+        <div style={{ padding: '10px 14px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FEE2E2', color: '#DC2626', fontSize: 13, marginBottom: 18 }}>
+          {errorMsg}
+        </div>
+      )}
 
-      {/* Login Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {errorMsg && (
-          <div className="p-3 text-xs rounded-2xl bg-red-50 text-red-700 border border-red-200 flex items-center space-x-2 animate-in fade-in">
-            <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        {/* Email Field */}
-        <div>
-          <label className="block text-xs font-bold text-slate-800 mb-2">
-            E-mail
+      {/* Form */}
+      <form onSubmit={handleSubmit}>
+        <div style={{ marginBottom: 18 }}>
+          <label style={{ fontSize: 12.5, fontWeight: 600, color: '#344054', marginBottom: 6, display: 'block' }}>
+            Work email
           </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-              <Mail className="w-4 h-4" />
-            </div>
+          <div style={{ position: 'relative' }}>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              className="w-full pl-11 pr-4 py-3.5 text-sm rounded-2xl bg-[#f0f4f9] border border-transparent focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all text-slate-900 placeholder:text-slate-400"
+              placeholder="you@microfin.io"
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                border: '1px solid #D0D5DD',
+                borderRadius: 9,
+                fontSize: 14,
+                color: '#101828',
+                background: '#fff',
+                outline: 'none'
+              }}
+              className="focus:border-[#2E6BE6] focus:ring-1 focus:ring-[#2E6BE6]"
             />
           </div>
         </div>
 
-        {/* Password Field */}
-        <div>
-          <label className="block text-xs font-bold text-slate-800 mb-2">
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 12.5, fontWeight: 600, color: '#344054', marginBottom: 6, display: 'block' }}>
             Password
           </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-              <Lock className="w-4 h-4" />
-            </div>
+          <div style={{ position: 'relative' }}>
             <input
               type={showPassword ? 'text' : 'password'}
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              className="w-full pl-11 pr-24 py-3.5 text-sm rounded-2xl bg-[#f0f4f9] border border-transparent focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all text-slate-900 placeholder:text-slate-400"
+              placeholder="••••••••"
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                paddingRight: 64,
+                border: '1px solid #D0D5DD',
+                borderRadius: 9,
+                fontSize: 14,
+                color: '#101828',
+                background: '#fff',
+                outline: 'none'
+              }}
+              className="focus:border-[#2E6BE6] focus:ring-1 focus:ring-[#2E6BE6]"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-4 flex items-center space-x-1 text-slate-500 hover:text-slate-800 text-xs font-semibold cursor-pointer transition-colors"
+              style={{
+                position: 'absolute',
+                right: 12,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                fontSize: 12,
+                color: '#64748B',
+                cursor: 'pointer',
+                fontWeight: 500
+              }}
             >
-              {showPassword ? (
-                <>
-                  <EyeOff className="w-3.5 h-3.5" />
-                  <span>Hide</span>
-                </>
-              ) : (
-                <>
-                  <Eye className="w-3.5 h-3.5" />
-                  <span>Show</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          <div className="flex justify-end pt-2">
-            <button
-              type="button"
-              onClick={() => alert('Password reset link has been dispatched to your corporate email.')}
-              className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline cursor-pointer transition-colors"
-            >
-              Forgot password?
+              {showPassword ? 'Hide' : 'Show'}
             </button>
           </div>
         </div>
 
-        {/* Primary Emerald Green Login Button */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
+          <button
+            type="button"
+            onClick={() => alert('Password reset link has been dispatched to your corporate email.')}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: 12.5,
+              fontWeight: 600,
+              color: ACCENT,
+              cursor: 'pointer'
+            }}
+          >
+            Forgot password?
+          </button>
+        </div>
+
         <button
           type="submit"
           disabled={isSubmitting || authLoading}
-          className="w-full mt-3 py-3.5 px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-base shadow-xl shadow-emerald-600/25 hover:shadow-emerald-600/35 transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98] group"
+          style={{
+            width: '100%',
+            padding: 13,
+            border: 'none',
+            borderRadius: 9,
+            background: ACCENT,
+            color: '#fff',
+            fontSize: 14.5,
+            fontWeight: 600,
+            cursor: isSubmitting || authLoading ? 'wait' : 'pointer',
+            opacity: isSubmitting ? 0.8 : 1,
+            transition: 'opacity .15s, transform .1s',
+            boxShadow: '0 2px 8px rgba(46,107,230,0.25)'
+          }}
+          className="hover:opacity-95 active:scale-[0.99]"
         >
           {isSubmitting || authLoading ? (
-            <span className="flex items-center space-x-2">
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
               <Loader2 className="w-4 h-4 animate-spin text-white" />
               <span>Signing in...</span>
             </span>
           ) : (
-            <span className="flex items-center space-x-2">
-              <span>Login</span>
-              <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
-            </span>
+            'Sign in'
           )}
         </button>
       </form>
+
+      {/* Quick Switch Test Personas matching MicroFin OS */}
+      <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid #E4E8F0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 10 }}>
+          <Users style={{ width: 13, height: 13 }} />
+          <span>Quick Demo Personas</span>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {[
+            { label: 'HR Manager', email: 'hr.manager@mms.com' },
+            { label: 'Maria Santos (Employee)', email: 'maria.santos@mms.com' },
+            { label: 'Finance Officer', email: 'officer@mms.com' },
+            { label: 'Director', email: 'director@mms.com' },
+            { label: 'Admin', email: 'admin@mms.com' },
+          ].map((item) => (
+            <button
+              key={item.email}
+              type="button"
+              onClick={() => selectPersona(item.email)}
+              style={{
+                fontSize: 11.5,
+                fontWeight: 600,
+                padding: '5px 10px',
+                borderRadius: 6,
+                border: email === item.email ? `1px solid ${ACCENT}` : '1px solid #E4E8F0',
+                background: email === item.email ? '#EFF6FF' : '#F8FAFC',
+                color: email === item.email ? ACCENT : '#475467',
+                cursor: 'pointer',
+                transition: 'all .12s'
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

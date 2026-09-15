@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 const db = require('../db/db');
 const { encryptAES256, decryptAES256, ALGORITHM } = require('../utils/crypto');
 const crypto = require('crypto');
@@ -52,7 +53,34 @@ router.post('/decrypt', (req, res) => {
 // Immutable cryptographic audit log stream
 router.get('/audit-logs', async (req, res) => {
   try {
-    const logs = await db.getAuditLogs();
+    let user_id = null;
+    let user_role = req.headers['x-user-role'] || null;
+    let user_name = null;
+
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.decode(token);
+        if (decoded) {
+          user_id = decoded.sub;
+          user_role = user_role || decoded.role;
+          user_name = decoded.name;
+        }
+      } catch (_) {}
+    }
+
+    const { limit, action, entity, search } = req.query;
+    const logs = await db.getAuditLogs({
+      limit: limit ? Number(limit) : 200,
+      action,
+      entity,
+      search,
+      user_id,
+      user_role,
+      user_name
+    });
+
     res.json({ audit_logs: logs, total: logs.length });
   } catch (err) {
     res.status(500).json({ error: err.message });

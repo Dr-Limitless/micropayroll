@@ -23,6 +23,7 @@ import PayrollComputationReportModal from './PayrollComputationReportModal';
 import { useAuth } from '../../context/AuthContext';
 import { canPerformAction } from '../../utils/rbac';
 import { api } from '../../services/api';
+import { ACCENT, badgeStyle } from '../../theme';
 
 
 function formatCurrency(val, rawVal) {
@@ -246,13 +247,14 @@ export default function PayrollComputationView({ searchFilter }) {
 
   const getStatusBadge = (emp) => {
     const status = emp.status;
-    let badgeStyle = 'bg-slate-100 text-slate-600 border border-slate-200';
-    if (status === 'Processed') {
-      badgeStyle = 'bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100';
+    let bg = '#F1F5F9';
+    let fg = '#64748B';
+    if (status === 'Processed' || status === 'Active' || status === 'Approved') {
+      bg = '#DCFCE7';
+      fg = '#15803D';
     } else if (status === 'Pending') {
-      badgeStyle = 'bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100';
-    } else {
-      badgeStyle = 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200';
+      bg = '#FEF3C7';
+      fg = '#B45309';
     }
 
     return (
@@ -260,7 +262,20 @@ export default function PayrollComputationView({ searchFilter }) {
         type="button"
         title="Click to cycle status (Processed -> Pending -> On Hold)"
         onClick={(e) => handleStatusToggle(e, emp)}
-        className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${badgeStyle}`}
+        style={{
+          background: bg,
+          color: fg,
+          fontSize: 11.5,
+          fontWeight: 700,
+          padding: '4px 10px',
+          borderRadius: 20,
+          border: 'none',
+          cursor: 'pointer',
+          transition: 'all .12s',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4
+        }}
       >
         {status}
       </button>
@@ -293,13 +308,13 @@ export default function PayrollComputationView({ searchFilter }) {
       {/* Title & Action Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="space-y-1 min-w-0">
-          <div className="flex items-center space-x-2">
-            <div className="w-1 h-6 bg-[#7c3aed] rounded-full" />
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-1.5 h-6 bg-[#2E6BE6] rounded-full" />
+            <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-xl sm:text-2xl font-extrabold text-[#101828] tracking-tight">
               Payroll Computation
             </h1>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 font-normal pl-3 truncate">
+          <p className="text-xs sm:text-sm text-[#64748B] font-normal pl-4 truncate">
             Calculate gross pay, statutory deductions, HMO, claims reimbursement & net payout — {selectedMonth}
           </p>
         </div>
@@ -309,10 +324,10 @@ export default function PayrollComputationView({ searchFilter }) {
           {canPerformAction(user?.role, 'ENROLL_EMPLOYEE') && (
             <button
               onClick={() => setShowAddModal(true)}
-              className="px-3.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-[#7c3aed] font-bold text-xs transition-all flex items-center space-x-1.5 shadow-xs cursor-pointer shrink-0 whitespace-nowrap"
+              className="px-3.5 py-2 rounded-lg bg-[#EFF6FF] hover:bg-blue-100 border border-blue-200 text-[#2E6BE6] font-semibold text-xs transition-all flex items-center space-x-1.5 shadow-xs cursor-pointer shrink-0 whitespace-nowrap"
               title="Enroll new employee into master roster and payroll sheet"
             >
-              <UserPlus className="w-3.5 h-3.5 text-[#7c3aed]" />
+              <UserPlus className="w-3.5 h-3.5 text-[#2E6BE6]" />
               <span>Enroll Employee</span>
             </button>
           )}
@@ -322,7 +337,7 @@ export default function PayrollComputationView({ searchFilter }) {
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="appearance-none bg-white border border-slate-200 hover:border-slate-300 text-xs font-semibold text-slate-700 px-3.5 py-2 pr-8 rounded-xl outline-none focus:border-[#7c3aed] cursor-pointer shadow-sm whitespace-nowrap"
+              className="appearance-none bg-white border border-[#D0D5DD] hover:border-slate-400 text-xs font-semibold text-[#101828] px-3.5 py-2 pr-8 rounded-lg outline-none focus:border-[#2E6BE6] cursor-pointer shadow-xs whitespace-nowrap"
             >
               <optgroup label="── 📅 Current Live Periods (2026) ──">
                 <option value="September 1–15, 2026">🟢 Sep 1–15, 2026 (1st Cut-off) ← TODAY</option>
@@ -359,9 +374,9 @@ export default function PayrollComputationView({ searchFilter }) {
             onClick={handleCompute}
             disabled={isComputing || !canPerformAction(user?.role, 'COMPUTE_PAYROLL')}
             title={!canPerformAction(user?.role, 'COMPUTE_PAYROLL') ? 'Requires Payroll Officer or System Administrator permission' : 'Execute live cross-module payroll computation'}
-            className={`px-4 py-2 rounded-xl font-semibold text-xs transition-all flex items-center space-x-1.5 shadow-md shrink-0 whitespace-nowrap ${
+            className={`px-4 py-2 rounded-lg font-semibold text-xs transition-all flex items-center space-x-1.5 shadow-xs shrink-0 whitespace-nowrap ${
               canPerformAction(user?.role, 'COMPUTE_PAYROLL')
-                ? 'bg-[#7c3aed] hover:bg-[#6d28d9] active:bg-[#5b21b6] text-white shadow-purple-600/20 cursor-pointer'
+                ? 'bg-[#2E6BE6] hover:bg-blue-700 active:bg-blue-800 text-white cursor-pointer'
                 : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
             }`}
           >
@@ -372,17 +387,17 @@ export default function PayrollComputationView({ searchFilter }) {
       </div>
 
       {/* Cross-Module Period Status & Lifecycle Bar */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-white rounded-[14px] border border-[#E4E8F0] shadow-xs p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className={`w-3 h-3 rounded-full ${period?.is_locked ? 'bg-amber-500 animate-pulse' : period?.status === 'Paid' ? 'bg-emerald-500' : 'bg-purple-600'}`} />
+          <div className={`w-3 h-3 rounded-full ${period?.is_locked ? 'bg-amber-500 animate-pulse' : period?.status === 'Paid' ? 'bg-[#15803D]' : 'bg-[#2E6BE6]'}`} />
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-bold text-slate-900">Period Lifecycle:</span>
+              <span className="text-xs font-bold text-[#101828]">Period Lifecycle:</span>
               <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                period?.status === 'Paid' ? 'bg-emerald-100 text-emerald-800' :
-                period?.status === 'Finalized' ? 'bg-indigo-100 text-indigo-800' :
-                period?.status === 'Approved' ? 'bg-blue-100 text-blue-800' :
-                period?.status === 'For Review' ? 'bg-amber-100 text-amber-800' :
+                period?.status === 'Paid' ? 'bg-[#DCFCE7] text-[#15803D]' :
+                period?.status === 'Finalized' ? 'bg-[#EFF6FF] text-[#2E6BE6]' :
+                period?.status === 'Approved' ? 'bg-[#DCFCE7] text-[#15803D]' :
+                period?.status === 'For Review' ? 'bg-[#FEF3C7] text-[#B45309]' :
                 'bg-slate-100 text-slate-700'
               }`}>
                 {period?.is_locked ? '🔒 ' : ''}{period?.status || 'Draft'}
@@ -397,12 +412,12 @@ export default function PayrollComputationView({ searchFilter }) {
                 </span>
               )}
               {period?.is_locked && (
-                <span className="text-[11px] text-amber-600 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                  Locked & Claims Reimbursed
+                <span className="text-[11px] text-[#B45309] font-semibold bg-[#FEF3C7] px-2 py-0.5 rounded border border-amber-200">
+                  Locked &amp; Claims Reimbursed
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-slate-400 mt-0.5">
+            <p className="text-[11px] text-[#64748B] mt-0.5">
               Cut-off: {period?.start_date || '2024-07-01'} to {period?.end_date || '2024-07-31'} • Payout: {period?.payout_date || 'July 25, 2024'}
               {period?.is_semi_monthly && (
                 <span className="ml-2 text-slate-500 font-medium">
@@ -422,9 +437,9 @@ export default function PayrollComputationView({ searchFilter }) {
               onClick={() => handlePeriodStatusChange('For Review')}
               disabled={isUpdatingPeriod || !canPerformAction(user?.role, 'SUBMIT_FOR_REVIEW')}
               title={!canPerformAction(user?.role, 'SUBMIT_FOR_REVIEW') ? 'Restricted to Payroll Officer or System Admin' : 'Submit draft for Finance Director approval'}
-              className={`px-3 py-1.5 rounded-xl font-semibold text-xs transition-colors flex items-center gap-1 shadow-sm ${
+              className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-colors flex items-center gap-1 shadow-xs ${
                 canPerformAction(user?.role, 'SUBMIT_FOR_REVIEW')
-                  ? 'bg-amber-500 hover:bg-amber-600 text-white cursor-pointer'
+                  ? 'bg-[#B45309] hover:bg-amber-700 text-white cursor-pointer'
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed'
               }`}
             >
@@ -437,9 +452,9 @@ export default function PayrollComputationView({ searchFilter }) {
               onClick={() => handlePeriodStatusChange('Approved')}
               disabled={isUpdatingPeriod || !canPerformAction(user?.role, 'APPROVE_PAYROLL')}
               title={!canPerformAction(user?.role, 'APPROVE_PAYROLL') ? 'Restricted to Finance Director or System Admin' : 'Approve payroll figures for lock and disbursement'}
-              className={`px-3 py-1.5 rounded-xl font-semibold text-xs transition-colors flex items-center gap-1 shadow-sm ${
+              className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-colors flex items-center gap-1 shadow-xs ${
                 canPerformAction(user?.role, 'APPROVE_PAYROLL')
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
+                  ? 'bg-[#2E6BE6] hover:bg-blue-700 text-white cursor-pointer'
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed'
               }`}
             >
@@ -453,13 +468,13 @@ export default function PayrollComputationView({ searchFilter }) {
               onClick={() => handlePeriodStatusChange('Finalized')}
               disabled={isUpdatingPeriod || !canPerformAction(user?.role, 'FINALIZE_AND_LOCK')}
               title={!canPerformAction(user?.role, 'FINALIZE_AND_LOCK') ? 'Restricted to Finance Director or System Admin' : 'Finalize period, lock from editing, and reimburse approved claims'}
-              className={`px-3 py-1.5 rounded-xl font-semibold text-xs transition-colors flex items-center gap-1 shadow-sm ${
+              className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-colors flex items-center gap-1 shadow-xs ${
                 canPerformAction(user?.role, 'FINALIZE_AND_LOCK')
-                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer'
+                  ? 'bg-[#2E6BE6] hover:bg-blue-700 text-white cursor-pointer'
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed'
               }`}
             >
-              <span>Finalize & Lock Period</span>
+              <span>Finalize &amp; Lock Period</span>
             </button>
           )}
 
@@ -468,9 +483,9 @@ export default function PayrollComputationView({ searchFilter }) {
               onClick={() => handlePeriodStatusChange('Paid')}
               disabled={isUpdatingPeriod || !canPerformAction(user?.role, 'DISBURSE_PAYROLL')}
               title={!canPerformAction(user?.role, 'DISBURSE_PAYROLL') ? 'Restricted to Finance Director or System Admin' : 'Mark direct deposit as completed and paid'}
-              className={`px-3 py-1.5 rounded-xl font-semibold text-xs transition-colors flex items-center gap-1 shadow-sm ${
+              className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-colors flex items-center gap-1 shadow-xs ${
                 canPerformAction(user?.role, 'DISBURSE_PAYROLL')
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+                  ? 'bg-[#15803D] hover:bg-emerald-700 text-white cursor-pointer'
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed'
               }`}
             >
@@ -485,7 +500,7 @@ export default function PayrollComputationView({ searchFilter }) {
               onClick={() => handlePeriodStatusChange('Draft')}
               disabled={isUpdatingPeriod}
               title="Reset to Draft (Unlocks historical editing for testing)"
-              className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs transition-colors cursor-pointer"
+              className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs transition-colors cursor-pointer"
             >
               Reset to Draft
             </button>
@@ -496,44 +511,44 @@ export default function PayrollComputationView({ searchFilter }) {
       {/* 4 Summary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Gross Pay */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-2 flex flex-col justify-between">
+        <div className="bg-white p-5 rounded-[14px] border border-[#E4E8F0] space-y-2 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              TOTAL GROSS PAY
+            <span className="text-[12px] font-semibold text-[#64748B]">
+              Total Gross Pay
             </span>
-            <div className="w-8 h-8 rounded-full bg-purple-50 text-[#7c3aed] flex items-center justify-center font-bold text-sm">
-              <DollarSign className="w-4 h-4 text-[#7c3aed]" />
+            <div className="w-8 h-8 rounded-lg bg-[#EFF6FF] text-[#2E6BE6] flex items-center justify-center font-bold text-sm">
+              <DollarSign className="w-4 h-4 text-[#2E6BE6]" />
             </div>
           </div>
           <div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-2xl sm:text-[28px] font-extrabold text-[#101828] tracking-tight">
               {formatCurrency(summary?.total_gross, summary?.total_gross_raw)}
             </div>
-            <div className="text-xs text-slate-500 font-medium mt-0.5">
+            <div className="text-xs text-[#64748B] font-medium mt-0.5">
               {summary?.employees_count || employees.length || 160} employees
             </div>
           </div>
-          <div className="flex items-center text-xs font-semibold text-emerald-600 pt-1">
+          <div className="flex items-center text-xs font-semibold text-[#15803D] pt-1">
             <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" />
-            <span>{summary?.gross_trend || '+3.4% vs June'}</span>
+            <span>{summary?.gross_trend || '+3.4% vs last period'}</span>
           </div>
         </div>
 
         {/* Total Deductions */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-2 flex flex-col justify-between">
+        <div className="bg-white p-5 rounded-[14px] border border-[#E4E8F0] space-y-2 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              TOTAL DEDUCTIONS
+            <span className="text-[12px] font-semibold text-[#64748B]">
+              Total Deductions
             </span>
-            <div className="w-8 h-8 rounded-full bg-purple-50 text-[#7c3aed] flex items-center justify-center font-bold text-sm">
-              <TrendingDown className="w-4 h-4 text-[#7c3aed]" />
+            <div className="w-8 h-8 rounded-lg bg-[#FEF2F2] text-[#DC2626] flex items-center justify-center font-bold text-sm">
+              <TrendingDown className="w-4 h-4 text-[#DC2626]" />
             </div>
           </div>
           <div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-2xl sm:text-[28px] font-extrabold text-[#101828] tracking-tight">
               {formatCurrency(summary?.total_deductions, summary?.total_deductions_raw)}
             </div>
-            <div className="text-xs text-slate-500 font-medium mt-0.5">
+            <div className="text-xs text-[#64748B] font-medium mt-0.5">
               {summary?.deductions_label || 'Tax + statutory'}
             </div>
           </div>
@@ -541,44 +556,44 @@ export default function PayrollComputationView({ searchFilter }) {
         </div>
 
         {/* Total Net Payout */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-2 flex flex-col justify-between">
+        <div className="bg-white p-5 rounded-[14px] border border-[#E4E8F0] space-y-2 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              TOTAL NET PAYOUT
+            <span className="text-[12px] font-semibold text-[#64748B]">
+              Total Net Payout
             </span>
-            <div className="w-8 h-8 rounded-full bg-purple-50 text-[#7c3aed] flex items-center justify-center font-bold text-sm">
-              <Wallet className="w-4 h-4 text-[#7c3aed]" />
+            <div className="w-8 h-8 rounded-lg bg-[#EFF6FF] text-[#2E6BE6] flex items-center justify-center font-bold text-sm">
+              <Wallet className="w-4 h-4 text-[#2E6BE6]" />
             </div>
           </div>
           <div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-2xl sm:text-[28px] font-extrabold text-[#101828] tracking-tight">
               {formatCurrency(summary?.total_net, summary?.total_net_raw)}
             </div>
-            <div className="text-xs text-slate-500 font-medium mt-0.5">
+            <div className="text-xs text-[#64748B] font-medium mt-0.5">
               {summary?.payout_date || 'July 25, 2024'}
             </div>
           </div>
-          <div className="flex items-center text-xs font-semibold text-emerald-600 pt-1">
+          <div className="flex items-center text-xs font-semibold text-[#15803D] pt-1">
             <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" />
-            <span>{summary?.net_trend || '+2.8% vs June'}</span>
+            <span>{summary?.net_trend || '+2.8% vs last period'}</span>
           </div>
         </div>
 
         {/* Employees Processed */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-2 flex flex-col justify-between">
+        <div className="bg-white p-5 rounded-[14px] border border-[#E4E8F0] space-y-2 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              EMPLOYEES PROCESSED
+            <span className="text-[12px] font-semibold text-[#64748B]">
+              Employees Processed
             </span>
-            <div className="w-8 h-8 rounded-full bg-purple-50 text-[#7c3aed] flex items-center justify-center font-bold text-sm">
-              <Users className="w-4 h-4 text-[#7c3aed]" />
+            <div className="w-8 h-8 rounded-lg bg-[#F0FDF4] text-[#15803D] flex items-center justify-center font-bold text-sm">
+              <Users className="w-4 h-4 text-[#15803D]" />
             </div>
           </div>
           <div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-2xl sm:text-[28px] font-extrabold text-[#101828] tracking-tight">
               {summary?.employees_processed || '142/160'}
             </div>
-            <div className="text-xs text-slate-500 font-medium mt-0.5">
+            <div className="text-xs text-[#64748B] font-medium mt-0.5">
               {summary?.processed_percentage || '88.75% complete'}
             </div>
           </div>
@@ -587,8 +602,8 @@ export default function PayrollComputationView({ searchFilter }) {
       </div>
 
       {/* Main Computation Sheet Table */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+      <div className="bg-white rounded-[14px] border border-[#E4E8F0] shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-[#E4E8F0] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-900">
               Payroll Computation Sheet — {selectedMonth}
@@ -607,7 +622,7 @@ export default function PayrollComputationView({ searchFilter }) {
                 placeholder="Search employee, dept, code..."
                 value={localSearch}
                 onChange={(e) => setLocalSearch(e.target.value)}
-                className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] outline-none transition-all shadow-xs"
+                className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-[#2E6BE6] focus:ring-1 focus:ring-[#2E6BE6] outline-none transition-all shadow-xs"
               />
               {localSearch && (
                 <button
@@ -622,7 +637,7 @@ export default function PayrollComputationView({ searchFilter }) {
             {canPerformAction(user?.role, 'ENROLL_EMPLOYEE') && (
               <button
                 onClick={() => setShowAddModal(true)}
-                className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-[#7c3aed] border border-purple-200 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer whitespace-nowrap"
+                className="px-3 py-1.5 rounded-xl bg-[#EFF6FF] hover:bg-blue-100 text-[#2E6BE6] border border-blue-200 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer whitespace-nowrap"
                 title="Enroll a new employee into payroll"
               >
                 <UserPlus className="w-3.5 h-3.5" />
@@ -677,12 +692,12 @@ export default function PayrollComputationView({ searchFilter }) {
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider bg-white">
+            <thead className="border-b border-[#E4E8F0] text-[#64748B] font-bold uppercase tracking-wider bg-[#F8FAFC]">
               <tr>
                 <th className="py-3 px-4">EMPLOYEE</th>
                 <th className="py-3 px-3">BASIC PAY</th>
                 <th className="py-3 px-3">OT PAY</th>
-                <th className="py-3 px-3 text-purple-600">HOLIDAY / NSD</th>
+                <th className="py-3 px-3 text-[#2E6BE6]">HOLIDAY / NSD</th>
                 <th className="py-3 px-3 text-indigo-600">ALLOWANCES</th>
                 <th className="py-3 px-3 text-emerald-600">CLAIMS / REIMB</th>
                 <th className="py-3 px-3">GROSS</th>
@@ -692,7 +707,7 @@ export default function PayrollComputationView({ searchFilter }) {
                 <th className="py-3 px-3 text-red-500">PAG-IBIG</th>
                 <th className="py-3 px-3 text-pink-600">HMO DED.</th>
                 <th className="py-3 px-3 text-amber-600">LOAN ADV.</th>
-                <th className="py-3 px-3 text-[#7c3aed] font-black">NET PAY</th>
+                <th className="py-3 px-3 text-[#2E6BE6] font-black">NET PAY</th>
                 <th className="py-3 px-4">STATUS</th>
                 <th className="py-3 px-3 text-right">ACTION</th>
               </tr>
@@ -707,11 +722,11 @@ export default function PayrollComputationView({ searchFilter }) {
                   {/* Employee Info */}
                   <td className="py-3.5 px-4 whitespace-nowrap">
                     <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 rounded-full bg-purple-100 text-[#7c3aed] font-bold flex items-center justify-center text-xs shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-[#EEF2FF] text-[#2E6BE6] font-bold flex items-center justify-center text-xs shrink-0">
                         {emp.initials || `${emp.first_name[0]}${emp.last_name[0]}`}
                       </div>
                       <div>
-                        <div className="font-bold text-slate-900 leading-tight group-hover:text-[#7c3aed] transition-colors">
+                        <div className="font-bold text-slate-900 leading-tight group-hover:text-[#2E6BE6] transition-colors">
                           {emp.first_name} {emp.last_name}
                         </div>
                         <div className="text-[11px] text-slate-400 leading-tight flex items-center gap-1.5 mt-0.5">
@@ -897,7 +912,7 @@ export default function PayrollComputationView({ searchFilter }) {
                   </td>
 
                   {/* Net Pay */}
-                  <td className="py-3.5 px-3 whitespace-nowrap font-black text-[#7c3aed] font-mono text-sm">
+                  <td className="py-3.5 px-3 whitespace-nowrap font-black text-[#2E6BE6] font-mono text-sm">
                     ₱{Number(emp.net_pay).toLocaleString()}
                   </td>
 
@@ -914,7 +929,7 @@ export default function PayrollComputationView({ searchFilter }) {
                           e.stopPropagation();
                           setSelectedPayslipId(emp.id);
                         }}
-                        className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-[#7c3aed] text-slate-600 hover:text-white text-xs font-semibold transition-colors flex items-center gap-1"
+                        className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-[#2E6BE6] text-slate-600 hover:text-white text-xs font-semibold transition-colors flex items-center gap-1"
                         title="Generate & View Official Payslip"
                       >
                         <FileText className="w-3 h-3" />

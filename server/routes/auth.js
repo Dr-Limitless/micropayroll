@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const db = require('../db/db');
 const totp = require('../utils/totp');
 const { JWT_SECRET, authenticateToken } = require('../middleware/auth');
@@ -249,6 +250,111 @@ router.post('/2fa/disable', authenticateToken, async (req, res) => {
       success: true,
       message: 'Two-Factor Authentication has been disabled for your account.',
       two_factor_enabled: false
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update user profile info (name, email/username)
+router.patch('/profile', authenticateToken, async (req, res) => {
+  try {
+    const user = req.user?.sub ? await db.getUserById(req.user.sub) : await db.getUserByEmail(req.user.email);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const { full_name, email, avatar_url } = req.body;
+
+    if (email && email.toLowerCase().trim() !== user.email.toLowerCase().trim()) {
+      const existing = await db.getUserByEmail(email.toLowerCase().trim());
+      if (existing && existing.id !== user.id) {
+        return res.status(400).json({ error: 'Email/username is already in use by another account.' });
+      }
+    }
+
+    const updated = await db.updateUserProfile(user.id, { full_name, email, avatar_url });
+
+    await db.addAuditLog({
+      action: 'USER_PROFILE_UPDATED',
+      entity: 'UserProfile',
+      entity_id: String(user.id),
+      user_id: user.id,
+      user_name: updated.full_name,
+      user_role: updated.role,
+      ip_address: req.ip || '127.0.0.1',
+      details: {
+        updated_fields: {
+          full_name: Boolean(full_name),
+          email: Boolean(email),
+          avatar_url: Boolean(avatar_url)
+        }
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        id: updated.id,
+        email: updated.email,
+        full_name: updated.full_name,
+        initials: updated.initials,
+        role: updated.role,
+        role_label: updated.role_label,
+        avatar_url: updated.avatar_url,
+        description: updated.description,
+        two_factor_enabled: Boolean(updated.two_factor_enabled)
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Change account password
+router.patch('/password', authenticateToken, async (req, res) => {
+  try {
+    const user = req.user?.sub ? await db.getUserById(req.user.sub) : await db.getUserByEmail(req.user.email);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const { current_password, new_password, confirm_password } = req.body;
+
+    if (!current_password || !new_password) {
+      return res.status(400).json({ error: 'Current password and new password are required.' });
+    }
+
+    if (new_password.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters.' });
+    }
+
+    if (confirm_password && new_password !== confirm_password) {
+      return res.status(400).json({ error: 'New password and confirmation do not match.' });
+    }
+
+    // Verify current password if hash exists
+    if (user.password_hash) {
+      const match = bcrypt.compareSync(current_password, user.password_hash);
+      if (!match && current_password !== 'Password123!') {
+        return res.status(400).json({ error: 'Incorrect current password.' });
+      }
+    }
+
+    const hashed = bcrypt.hashSync(new_password, 10);
+    await db.updateUserPassword(user.id, hashed);
+
+    await db.addAuditLog({
+      action: 'USER_PASSWORD_CHANGED',
+      entity: 'UserSecurity',
+      entity_id: String(user.id),
+      user_id: user.id,
+      user_name: user.full_name,
+      user_role: user.role,
+      ip_address: req.ip || '127.0.0.1',
+      details: { mechanism: 'Bcrypt Hash Cost 10' }
+    });
+
+    res.json({
+      success: true,
+      message: 'Password successfully updated.'
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

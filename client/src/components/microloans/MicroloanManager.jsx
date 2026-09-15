@@ -82,8 +82,8 @@ export default function MicroloanManager() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Landmark className="w-6 h-6 text-purple-600" />
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2 font-display">
+            <Landmark className="w-6 h-6 text-[#2E6BE6]" />
             Microfinancial Assistance & Salary Advances
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">
@@ -93,7 +93,7 @@ export default function MicroloanManager() {
 
         <button
           onClick={() => setShowApplyModal(true)}
-          className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs shadow-md shadow-purple-600/20 transition-all flex items-center space-x-1.5"
+          className="px-4 py-2.5 rounded-lg bg-[#2E6BE6] hover:bg-blue-700 text-white font-semibold text-xs shadow-md shadow-blue-600/20 transition-all flex items-center space-x-1.5 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>Request Microloan / Advance</span>
@@ -102,25 +102,25 @@ export default function MicroloanManager() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
+        <div className="p-5 rounded-[14px] bg-white border border-[#E4E8F0] shadow-sm">
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Active Loan Pool</span>
-          <div className="text-2xl font-black text-slate-900 mt-1">
+          <div className="text-2xl font-black text-slate-900 mt-1 font-display">
             ₱{totalOutstanding.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-          <div className="text-[11px] text-purple-600 font-semibold mt-0.5">Automated cut-off deduction linked</div>
+          <div className="text-[11px] text-[#2E6BE6] font-semibold mt-0.5">Automated cut-off deduction linked</div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
+        <div className="p-5 rounded-[14px] bg-white border border-[#E4E8F0] shadow-sm">
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pending Applications</span>
-          <div className="text-2xl font-black text-amber-600 mt-1">
+          <div className="text-2xl font-black text-amber-600 mt-1 font-display">
             {pendingCount} Requests
           </div>
           <div className="text-[11px] text-slate-500 mt-0.5">Requires Manager / Director Approval</div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
+        <div className="p-5 rounded-[14px] bg-white border border-[#E4E8F0] shadow-sm">
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Default Rate</span>
-          <div className="text-2xl font-black text-emerald-600 mt-1">
+          <div className="text-2xl font-black text-emerald-600 mt-1 font-display">
             0.00%
           </div>
           <div className="text-[11px] text-slate-500 mt-0.5">100% Repayment Guarantee via Payroll Hold</div>
@@ -128,8 +128,8 @@ export default function MicroloanManager() {
       </div>
 
       {/* Microloans Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+      <div className="bg-white rounded-[14px] border border-[#E4E8F0] shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-[#E4E8F0] flex items-center justify-between">
           <div className="text-xs font-bold text-slate-800 uppercase tracking-wider">
             All Assistance Records ({loans.length})
           </div>
@@ -137,7 +137,7 @@ export default function MicroloanManager() {
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+            <thead className="bg-[#F8FAFC] border-b border-[#E4E8F0] text-slate-500 font-bold uppercase tracking-wider">
               <tr>
                 <th className="py-3 px-4">Employee</th>
                 <th className="py-3 px-4">Assistance Type</th>
@@ -163,7 +163,7 @@ export default function MicroloanManager() {
                   <td className="py-3.5 px-4 whitespace-nowrap font-mono font-bold text-slate-900">
                     ₱{Number(loan.principal_amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
-                  <td className="py-3.5 px-4 whitespace-nowrap font-mono text-purple-700 font-semibold">
+                  <td className="py-3.5 px-4 whitespace-nowrap font-mono text-[#2E6BE6] font-semibold">
                     ₱{Number(loan.monthly_deduction).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
                   </td>
                   <td className="py-3.5 px-4 whitespace-nowrap text-slate-600">
@@ -213,15 +213,15 @@ export default function MicroloanManager() {
       {/* Apply Modal */}
       {showApplyModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Landmark className="w-4 h-4 text-purple-600" />
+          <div className="bg-white rounded-[14px] max-w-md w-full p-6 space-y-4 shadow-2xl border border-[#E4E8F0]">
+            <div className="flex items-center justify-between border-b border-[#E4E8F0] pb-3">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2 font-display">
+                <Landmark className="w-4 h-4 text-[#2E6BE6]" />
                 Apply for Microfinance Assistance
               </h2>
               <button 
                 onClick={() => setShowApplyModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -233,7 +233,7 @@ export default function MicroloanManager() {
                 <select
                   value={newLoan.employee_id}
                   onChange={(e) => setNewLoan({ ...newLoan, employee_id: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 outline-none focus:border-purple-500 bg-white"
+                  className="w-full p-2.5 rounded-lg border border-[#E4E8F0] outline-none focus:border-[#2E6BE6] bg-white"
                 >
                   {employees.map(e => (
                     <option key={e.id} value={e.id}>{e.first_name} {e.last_name} ({e.employee_code})</option>
@@ -246,7 +246,7 @@ export default function MicroloanManager() {
                 <select
                   value={newLoan.loan_type}
                   onChange={(e) => setNewLoan({ ...newLoan, loan_type: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 outline-none focus:border-purple-500 bg-white"
+                  className="w-full p-2.5 rounded-lg border border-[#E4E8F0] outline-none focus:border-[#2E6BE6] bg-white"
                 >
                   <option value="Emergency Salary Advance">Emergency Salary Advance (1.0% interest)</option>
                   <option value="Educational Aid Advance">Educational Aid Advance (1.25% interest)</option>
@@ -263,7 +263,7 @@ export default function MicroloanManager() {
                     type="number"
                     value={newLoan.principal_amount}
                     onChange={(e) => setNewLoan({ ...newLoan, principal_amount: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 outline-none focus:border-purple-500"
+                    className="w-full p-2.5 rounded-lg border border-[#E4E8F0] outline-none focus:border-[#2E6BE6]"
                   />
                 </div>
                 <div>
@@ -271,7 +271,7 @@ export default function MicroloanManager() {
                   <select
                     value={newLoan.total_installments}
                     onChange={(e) => setNewLoan({ ...newLoan, total_installments: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 outline-none focus:border-purple-500 bg-white"
+                    className="w-full p-2.5 rounded-lg border border-[#E4E8F0] outline-none focus:border-[#2E6BE6] bg-white"
                   >
                     <option value="3">3 Months</option>
                     <option value="6">6 Months</option>
@@ -287,29 +287,29 @@ export default function MicroloanManager() {
                   rows="2"
                   value={newLoan.reason}
                   onChange={(e) => setNewLoan({ ...newLoan, reason: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 outline-none focus:border-purple-500"
+                  className="w-full p-2.5 rounded-lg border border-[#E4E8F0] outline-none focus:border-[#2E6BE6]"
                 />
               </div>
 
-              <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl text-[11px] text-purple-900 space-y-1">
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-[11px] text-blue-900 space-y-1">
                 <div className="flex justify-between">
                   <span>Estimated Monthly Cut-off Deduction:</span>
                   <strong className="font-mono">₱{(Math.round(Number(newLoan.principal_amount) / Number(newLoan.total_installments)) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / mo</strong>
                 </div>
-                <div className="text-[10px] text-purple-700">Deducted 50% automatically on each semi-monthly payroll run.</div>
+                <div className="text-[10px] text-[#2E6BE6]">Deducted 50% automatically on each semi-monthly payroll run.</div>
               </div>
 
               <div className="flex items-center justify-end space-x-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowApplyModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50"
+                  className="px-4 py-2 rounded-lg border border-[#E4E8F0] text-slate-600 font-semibold hover:bg-slate-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-md shadow-purple-600/20"
+                  className="px-4 py-2 rounded-lg bg-[#2E6BE6] hover:bg-blue-700 text-white font-semibold shadow-md shadow-blue-600/20 cursor-pointer"
                 >
                   Submit Application
                 </button>

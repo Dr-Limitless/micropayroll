@@ -1,10 +1,14 @@
 const { encryptAES256 } = require('../utils/crypto');
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+
+const DEFAULT_PASSWORD_HASH = bcrypt.hashSync('Password123!', 10);
 
 const initialUsers = [
   {
     id: 1,
     email: 'liza.gomez@mms.com',
+    password_hash: DEFAULT_PASSWORD_HASH,
     full_name: 'Liza Gomez',
     initials: 'LG',
     role: 'manager',
@@ -17,6 +21,7 @@ const initialUsers = [
   {
     id: 2,
     email: 'admin@mms.com',
+    password_hash: DEFAULT_PASSWORD_HASH,
     full_name: 'Alex Vance',
     initials: 'AV',
     role: 'admin',
@@ -29,6 +34,7 @@ const initialUsers = [
   {
     id: 3,
     email: 'payroll.officer@mms.com',
+    password_hash: DEFAULT_PASSWORD_HASH,
     full_name: 'Marcus Chen',
     initials: 'MC',
     role: 'officer',
@@ -41,6 +47,7 @@ const initialUsers = [
   {
     id: 4,
     email: 'finance.director@mms.com',
+    password_hash: DEFAULT_PASSWORD_HASH,
     full_name: 'Diana Sterling',
     initials: 'DS',
     role: 'director',
@@ -53,6 +60,7 @@ const initialUsers = [
   {
     id: 5,
     email: 'maria.santos@mms.com',
+    password_hash: DEFAULT_PASSWORD_HASH,
     full_name: 'Maria Santos',
     initials: 'MS',
     role: 'employee',

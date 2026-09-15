@@ -41,7 +41,11 @@ export const MODULE_PERMISSIONS = {
   // HR Analytics Dashboard
   realtime_dashboard:    ['admin', 'manager', 'officer', 'director'],
   financial_reporting:   ['admin', 'officer', 'director'],
-  government_compliance: ['admin', 'manager', 'officer', 'director', 'employee']
+  government_compliance: ['admin', 'manager', 'officer', 'director', 'employee'],
+
+  // System Administration & Self-Service
+  audit_logs:            ['admin', 'manager', 'officer', 'director', 'employee'],
+  settings:              ['admin', 'manager', 'officer', 'director', 'employee']
 };
 
 // Default landing module per role
