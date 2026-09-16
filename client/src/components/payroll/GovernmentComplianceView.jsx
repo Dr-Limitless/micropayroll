@@ -229,7 +229,7 @@ export default function GovernmentComplianceView() {
           <p className="text-xs sm:text-sm text-slate-500 pl-4 font-normal mt-0.5">
             {isEmployee 
               ? 'Statement of your personal government contributions (SSS, PhilHealth, Pag-IBIG, BIR Tax) and employer counterpart match'
-              : 'Overall employee schedules for SSS (Effective 2025 Schedule), PhilHealth RF-1, Pag-IBIG MCRF, and BIR Form 1601-C'}
+              : 'Overall employee schedules for SSS (RA 11199 Schedule), PhilHealth RF-1, Pag-IBIG MCRF, and BIR Form 1601-C'}
           </p>
         </div>
 
@@ -240,10 +240,25 @@ export default function GovernmentComplianceView() {
               onChange={e => setMonth(e.target.value)}
               className="px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 bg-white shadow-sm outline-none focus:border-emerald-500 cursor-pointer"
             >
-              <option value="July 2024">July 2024</option>
-              <option value="June 2024">June 2024</option>
-              <option value="August 2024">August 2024</option>
-              <option value="September 2026">September 2026</option>
+              <optgroup label="── 📅 2026 Live Cycles ──">
+                <option value="September 2026">🟢 September 2026 (Live Current)</option>
+                <option value="October 2026">October 2026</option>
+                <option value="November 2026">November 2026</option>
+                <option value="December 2026">December 2026</option>
+              </optgroup>
+              <optgroup label="── 📅 2025 Statutory Cycles (RA 11199) ──">
+                <option value="January 2025">January 2025 (14% Rate Effective)</option>
+                <option value="March 2025">March 2025</option>
+                <option value="June 2025">June 2025</option>
+                <option value="September 2025">September 2025</option>
+                <option value="December 2025">December 2025</option>
+              </optgroup>
+              <optgroup label="── 📅 2024 Historical Cycles (13% Rate) ──">
+                <option value="June 2024">June 2024</option>
+                <option value="July 2024">July 2024</option>
+                <option value="August 2024">August 2024</option>
+                <option value="September 2024">September 2024</option>
+              </optgroup>
             </select>
           )}
 
@@ -330,7 +345,7 @@ export default function GovernmentComplianceView() {
               { id: 'pagibig', label: 'Pag-IBIG Table' },
               { id: 'bir', label: 'BIR Tax Table' },
               { id: 'consolidated', label: 'All Agencies Consolidated' },
-              { id: 'master_schedule', label: '2025 SSS Book Master Schedule' }
+              { id: 'master_schedule', label: 'SSS Master Statutory Table (RA 11199)' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -371,7 +386,9 @@ export default function GovernmentComplianceView() {
               SCHEDULE OF SSS CONTRIBUTIONS
             </h2>
             <div className="text-xs font-bold uppercase tracking-widest text-black">
-              EFFECTIVE JANUARY 2025
+              {month.includes('2024') 
+                ? 'STATUTORY SCHEDULE • RA 11199 (13% RATE)' 
+                : 'STATUTORY SCHEDULE • EFFECTIVE JANUARY 2025 (14% RATE)'}
             </div>
             <div className="text-[11px] text-slate-600 italic mt-0.5">
               {isEmployee ? `Statement of Social Security Contributions for ${employeeData.full_name}` : `Republic Act No. 11199 • Monthly Remittance Schedule for ${month}`}
@@ -823,10 +840,10 @@ export default function GovernmentComplianceView() {
               SCHEDULE OF SSS CONTRIBUTIONS (OFFICIAL STATUTORY TABLE)
             </h2>
             <div className="text-xs font-bold uppercase tracking-widest text-black">
-              EFFECTIVE JANUARY 2025 (PAGE 252 REFERENCE)
+              REPUBLIC ACT NO. 11199 • 61-BRACKET STATUTORY MASTER TABLE
             </div>
             <div className="text-[11px] text-slate-600 italic mt-0.5">
-              Complete 61-Bracket Statutory Lookup Table for Social Security &amp; Mandatory Provident Fund
+              Official SSS Statutory Reference Table (Effective January 2025 Standard • Page 252 Reference)
             </div>
           </div>
 

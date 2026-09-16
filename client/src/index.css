@@ -476,6 +476,12 @@ html.dark header {
     display: none !important;
   }
 
+  /* When printing a formal modal report, completely hide the underlying application */
+  body.has-payroll-modal #root,
+  body.modal-open #root {
+    display: none !important;
+  }
+
   /* Unconstrain containers so document flows naturally */
   .h-screen {
     height: auto !important;
@@ -497,23 +503,35 @@ html.dark header {
   }
 
   /* Formal accounting/government schedule table borders */
-  .gov-table {
+  .gov-table,
+  .formal-report-table {
     width: 100% !important;
     border-collapse: collapse !important;
-    border: 2px solid #000000 !important;
+    border: 1.5px solid #000000 !important;
   }
 
   .gov-table th,
-  .gov-table td {
+  .gov-table td,
+  .formal-report-table th,
+  .formal-report-table td {
     border: 1px solid #000000 !important;
-    padding: 4px 6px !important;
+    padding: 3px 5px !important;
     color: #000000 !important;
   }
 
-  .gov-table thead th {
+  .gov-table thead th,
+  .formal-report-table thead th {
     background-color: #f1f5f9 !important;
     font-weight: bold !important;
     text-align: center !important;
+  }
+
+  .formal-report-table thead {
+    display: table-header-group !important;
+  }
+
+  .formal-report-table tr {
+    page-break-inside: avoid !important;
   }
 
   .print-only {
