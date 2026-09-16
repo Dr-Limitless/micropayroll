@@ -13,10 +13,14 @@ import {
   FileText,
   Building2,
   User,
-  ExternalLink
+  ExternalLink,
+  Eye,
+  EyeOff
 } from 'lucide-react';
+import { usePrivacy, isPrivacyActive, RAW_MASK } from '../../context/PrivacyContext';
 
 function fmt(n) {
+  if (isPrivacyActive()) return RAW_MASK;
   if (n === undefined || n === null || isNaN(Number(n))) return '0.00';
   return Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -38,6 +42,7 @@ function exportTableToCSV(filename, headers, rows) {
 
 export default function GovernmentComplianceView() {
   const { user } = useAuth();
+  const { privacyMode, togglePrivacyMode } = usePrivacy();
   const [data, setData] = useState(null);
   const [month, setMonth] = useState('July 2024');
   const [loading, setLoading] = useState(true);
@@ -241,6 +246,20 @@ export default function GovernmentComplianceView() {
               <option value="September 2026">September 2026</option>
             </select>
           )}
+
+          <button
+            type="button"
+            onClick={togglePrivacyMode}
+            title={privacyMode ? 'Privacy Mode ON — Click to reveal values' : 'Privacy Mode OFF — Click to hide values'}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 border shadow-sm transition-colors cursor-pointer whitespace-nowrap ${
+              privacyMode
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            {privacyMode ? <EyeOff className="w-3.5 h-3.5 shrink-0 text-emerald-600" /> : <Eye className="w-3.5 h-3.5 shrink-0" />}
+            <span>{privacyMode ? 'Masked' : 'Mask Figures'}</span>
+          </button>
 
           <button
             onClick={handleExportCSV}

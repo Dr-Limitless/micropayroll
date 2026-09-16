@@ -94,31 +94,29 @@ export default function Sidebar({ activeModule, setActiveModule, taskCounts = {}
   };
 
   return (
-    <aside 
-      className="mf-scroll select-none shrink-0 sticky top-0 h-screen flex flex-col justify-between z-40"
-      style={{
-        width: 260,
-        background: '#0B1F3A',
-        borderRight: '1px solid rgba(255,255,255,.08)'
-      }}
+    <aside
+      className="sidebar-root select-none shrink-0 sticky top-0 h-screen flex flex-col z-40 transition-colors duration-200"
+      style={{ width: 260 }}
     >
       {/* Brand Header */}
-      <div style={{ padding: '20px 18px 14px' }}>
+      <div className="sidebar-header" style={{ padding: '20px 18px 16px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div 
-            style={{ 
-              width: 34, 
-              height: 34, 
-              borderRadius: 10, 
-              background: ACCENT, 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              fontFamily: "'Plus Jakarta Sans',sans-serif", 
-              fontWeight: 800, 
-              fontSize: 13, 
-              color: '#fff', 
-              flex: 'none' 
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 11,
+              background: ACCENT,
+              boxShadow: '0 0 14px color-mix(in srgb, var(--mf-accent, #2E6BE6) 50%, transparent)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontFamily: "'Plus Jakarta Sans',sans-serif",
+              fontWeight: 800,
+              fontSize: 13.5,
+              color: '#fff',
+              flex: 'none',
+              letterSpacing: '.04em'
             }}
           >
             MF
@@ -127,53 +125,57 @@ export default function Sidebar({ activeModule, setActiveModule, taskCounts = {}
             <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 700, fontSize: 15, color: '#fff', lineHeight: 1.15 }}>
               MicroFin OS
             </div>
-            <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,.45)', fontWeight: 500, marginTop: 2 }}>
+            <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,.4)', fontWeight: 500, marginTop: 2 }}>
               HR &amp; Payroll Management
             </div>
           </div>
         </div>
       </div>
 
-      <div style={{ height: 1, background: 'rgba(255,255,255,.08)', margin: '0 18px 10px' }} />
+      <div style={{ height: 1, background: 'rgba(255,255,255,.07)', margin: '0 16px 8px' }} />
 
       {/* Navigation List */}
-      <div className="mf-scroll" style={{ flex: 1, overflowY: 'auto', paddingBottom: 16 }}>
+      <div className="mf-scroll sidebar-nav" style={{ flex: 1, overflowY: 'auto', paddingBottom: 12, paddingTop: 4 }}>
         {filteredSections.map((section) => {
           const isExpanded = !!expandedCategories[section.category];
           const hasActiveChild = section.submodules.some(s => s.id === activeModule);
 
           return (
-            <div key={section.category} style={{ marginBottom: 4 }}>
+            <div key={section.category} style={{ marginBottom: 2 }}>
               {/* Category Header Row */}
               <div
+                role="button"
+                tabIndex={0}
                 onClick={() => toggleCategory(section.category)}
+                onKeyDown={(e) => e.key === 'Enter' && toggleCategory(section.category)}
+                className="sidebar-category-row"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 10,
-                  padding: '8px 14px',
-                  margin: '2px 10px',
+                  gap: 9,
+                  padding: '7px 12px',
+                  margin: '1px 8px',
                   borderRadius: 8,
                   cursor: 'pointer',
-                  color: hasActiveChild ? '#fff' : 'rgba(255,255,255,.72)',
-                  background: 'transparent',
-                  fontWeight: 600,
-                  fontSize: 12.5,
-                  transition: 'background .15s, color .15s'
+                  color: hasActiveChild ? '#fff' : 'rgba(255,255,255,.65)',
+                  background: hasActiveChild ? 'color-mix(in srgb, var(--mf-accent, #2E6BE6) 18%, transparent)' : 'transparent',
+                  fontWeight: hasActiveChild ? 700 : 600,
+                  fontSize: 12,
+                  transition: 'background .15s, color .15s',
+                  borderLeft: hasActiveChild ? '2.5px solid var(--mf-accent, #2E6BE6)' : '2.5px solid transparent',
                 }}
-                className="hover:bg-white/[0.05]"
               >
-                <div 
+                <div
                   style={{
-                    width: 24,
-                    height: 24,
+                    width: 22,
+                    height: 22,
                     borderRadius: 6,
                     flex: 'none',
-                    background: hasActiveChild ? 'rgba(46,107,230,.35)' : 'rgba(255,255,255,.08)',
-                    color: hasActiveChild ? '#93C5FD' : 'rgba(255,255,255,.8)',
-                    fontSize: 9.5,
-                    fontWeight: 700,
-                    letterSpacing: '.02em',
+                    background: hasActiveChild ? 'color-mix(in srgb, var(--mf-accent, #2E6BE6) 35%, transparent)' : 'rgba(255,255,255,.09)',
+                    color: hasActiveChild ? 'var(--mf-accent, #2E6BE6)' : 'rgba(255,255,255,.7)',
+                    fontSize: 9,
+                    fontWeight: 800,
+                    letterSpacing: '.04em',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'
@@ -181,15 +183,16 @@ export default function Sidebar({ activeModule, setActiveModule, taskCounts = {}
                 >
                   {section.mono}
                 </div>
-                <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }}>
                   {section.category}
                 </div>
-                <div 
+                <div
                   style={{
                     fontSize: 10,
-                    color: 'rgba(255,255,255,.5)',
+                    color: 'rgba(255,255,255,.4)',
                     transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
-                    transition: 'transform .15s'
+                    transition: 'transform .2s',
+                    flexShrink: 0
                   }}
                 >
                   {CARET}
@@ -198,7 +201,7 @@ export default function Sidebar({ activeModule, setActiveModule, taskCounts = {}
 
               {/* Submodules Rows */}
               {isExpanded && (
-                <div style={{ paddingTop: 2, paddingBottom: 2 }}>
+                <div style={{ paddingTop: 2, paddingBottom: 4 }}>
                   {section.submodules.map((sub) => {
                     const isActive = activeModule === sub.id;
                     const count = taskCounts[sub.id] || 0;
@@ -206,35 +209,42 @@ export default function Sidebar({ activeModule, setActiveModule, taskCounts = {}
                     return (
                       <div
                         key={sub.id}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => setActiveModule(sub.id)}
+                        onKeyDown={(e) => e.key === 'Enter' && setActiveModule(sub.id)}
+                        className={isActive ? 'sidebar-sub-active' : 'sidebar-sub-inactive'}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 10,
-                          padding: '7px 14px 7px 34px',
-                          margin: '1px 10px',
-                          borderRadius: 8,
+                          gap: 9,
+                          padding: '6.5px 12px 6.5px 32px',
+                          margin: '1px 8px',
+                          borderRadius: 7,
                           cursor: 'pointer',
-                          fontSize: 12.5,
-                          fontWeight: isActive ? 600 : 500,
-                          color: isActive ? '#fff' : 'rgba(255,255,255,.65)',
+                          fontSize: 12,
+                          fontWeight: isActive ? 600 : 450,
+                          color: isActive ? '#fff' : 'rgba(255,255,255,.58)',
                           background: isActive ? ACCENT : 'transparent',
-                          transition: 'background .15s, color .15s'
+                          boxShadow: isActive ? '0 2px 14px color-mix(in srgb, var(--mf-accent, #2E6BE6) 45%, transparent)' : 'none',
+                          transition: 'background .15s, color .15s, box-shadow .15s',
+                          letterSpacing: isActive ? '.01em' : 'normal'
                         }}
-                        className={!isActive ? 'hover:bg-white/[0.06] hover:text-white' : ''}
                       >
-                        <div 
+                        <div
                           style={{
-                            width: 18,
-                            height: 18,
+                            width: 17,
+                            height: 17,
                             borderRadius: 4,
-                            background: isActive ? 'rgba(255,255,255,.2)' : 'rgba(255,255,255,.06)',
-                            fontSize: 8.5,
-                            fontWeight: 700,
+                            background: isActive ? 'rgba(255,255,255,.22)' : 'rgba(255,255,255,.07)',
+                            fontSize: 8,
+                            fontWeight: 800,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            flex: 'none'
+                            flex: 'none',
+                            color: isActive ? '#fff' : 'rgba(255,255,255,.6)',
+                            letterSpacing: '.03em'
                           }}
                         >
                           {sub.mono}
@@ -243,14 +253,17 @@ export default function Sidebar({ activeModule, setActiveModule, taskCounts = {}
                           {getSubmoduleLabel(sub)}
                         </div>
                         {count > 0 && (
-                          <div 
+                          <div
                             style={{
-                              padding: '1px 6px',
+                              padding: '1px 5px',
                               borderRadius: 10,
-                              fontSize: 9.5,
+                              fontSize: 9,
                               fontWeight: 700,
-                              background: isActive ? 'rgba(255,255,255,.25)' : '#EF4444',
-                              color: '#fff'
+                              background: isActive ? 'rgba(255,255,255,.28)' : '#EF4444',
+                              color: '#fff',
+                              flexShrink: 0,
+                              minWidth: 16,
+                              textAlign: 'center'
                             }}
                           >
                             {count > 99 ? '99+' : count}
@@ -261,28 +274,34 @@ export default function Sidebar({ activeModule, setActiveModule, taskCounts = {}
                   })}
                 </div>
               )}
+
+              {/* Subtle section divider */}
+              <div style={{ height: 1, background: 'rgba(255,255,255,.04)', margin: '4px 16px 2px' }} />
             </div>
           );
         })}
       </div>
 
-      {/* User Footer matching MicroFin OS */}
-      <div 
+      {/* User Footer */}
+      <div
+        className="sidebar-footer"
         style={{
-          padding: '14px 18px',
-          borderTop: '1px solid rgba(255,255,255,.08)',
+          padding: '12px 16px',
+          borderTop: '1px solid rgba(255,255,255,.07)',
           display: 'flex',
           alignItems: 'center',
           gap: 10,
-          background: 'rgba(0,0,0,.1)'
+          background: 'rgba(0,0,0,.14)',
+          flexShrink: 0
         }}
       >
-        <div 
+        <div
           style={{
             width: 32,
             height: 32,
             borderRadius: '50%',
-            background: 'rgba(255,255,255,.12)',
+            background: ACCENT,
+            boxShadow: '0 0 10px color-mix(in srgb, var(--mf-accent, #2E6BE6) 45%, transparent)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -295,7 +314,7 @@ export default function Sidebar({ activeModule, setActiveModule, taskCounts = {}
           {initials}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div 
+          <div
             style={{
               fontSize: 12.5,
               fontWeight: 600,
@@ -307,26 +326,25 @@ export default function Sidebar({ activeModule, setActiveModule, taskCounts = {}
           >
             {displayName}
           </div>
-          <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,.45)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,.4)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {displayRole}
           </div>
         </div>
         <button
           type="button"
-          onClick={() => {
-            if (logout) logout();
-          }}
+          onClick={() => { if (logout) logout(); }}
           onMouseEnter={() => setLogoutHover(true)}
           onMouseLeave={() => setLogoutHover(false)}
           style={{
             fontSize: 11,
-            color: logoutHover ? 'rgba(255,255,255,.9)' : 'rgba(255,255,255,.5)',
+            color: logoutHover ? 'rgba(255,255,255,.9)' : 'rgba(255,255,255,.45)',
             cursor: 'pointer',
             padding: '4px 8px',
             borderRadius: 6,
             background: logoutHover ? 'rgba(255,255,255,.1)' : 'transparent',
             border: 'none',
-            transition: 'background .15s, color .15s'
+            transition: 'background .15s, color .15s',
+            flexShrink: 0
           }}
         >
           Log out

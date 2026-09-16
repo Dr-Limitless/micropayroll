@@ -3,62 +3,303 @@
 @tailwind utilities;
 
 @layer base {
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+  }
   body {
     @apply bg-[#F5F7FA] text-[#101828] antialiased font-sans;
   }
 }
 
-/* Full Application Dark Mode Styles */
-html.dark body {
-  background-color: #081325 !important;
+/* CSS Variables — accent color reactive to Settings picker */
+:root {
+  --mf-accent: #2E6BE6;
+}
+
+/* Global Dynamic Accent Utilities — Reacts immediately to Settings Color Picker */
+[class*="bg-[#2E6BE6]"],
+.bg-brand-accent,
+.bg-mf-accent {
+  background-color: var(--mf-accent, #2E6BE6) !important;
+}
+
+[class*="bg-[#2E6BE6]"]:hover,
+.bg-brand-accent:hover,
+.bg-mf-accent:hover {
+  filter: brightness(0.92);
+}
+
+[class*="text-[#2E6BE6]"],
+.text-brand-accent,
+.text-mf-accent {
+  color: var(--mf-accent, #2E6BE6) !important;
+}
+
+[class*="border-[#2E6BE6]"],
+.border-brand-accent,
+.border-mf-accent {
+  border-color: var(--mf-accent, #2E6BE6) !important;
+}
+
+[class*="ring-[#2E6BE6]"],
+[class*="focus:ring-[#2E6BE6]"]:focus {
+  --tw-ring-color: var(--mf-accent, #2E6BE6) !important;
+}
+
+[class*="focus:border-[#2E6BE6]"]:focus {
+  border-color: var(--mf-accent, #2E6BE6) !important;
+}
+
+/* Soft accent tints (badges, tags, and indicator pills) */
+[class*="bg-[#EEF2FF]"],
+[class*="bg-[#EFF6FF]"] {
+  background-color: color-mix(in srgb, var(--mf-accent, #2E6BE6) 12%, transparent) !important;
+  color: var(--mf-accent, #2E6BE6) !important;
+}
+
+html.dark [class*="bg-[#EEF2FF]"],
+html.dark [class*="bg-[#EFF6FF]"] {
+  background-color: color-mix(in srgb, var(--mf-accent, #2E6BE6) 20%, transparent) !important;
+  color: color-mix(in srgb, var(--mf-accent, #2E6BE6) 75%, white) !important;
+}
+
+::selection {
+  background-color: var(--mf-accent, #2E6BE6) !important;
+  color: #ffffff !important;
+}
+
+/* =========================================================================
+   COMPREHENSIVE FULL-APPLICATION DARK MODE
+   ========================================================================= */
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body,
+html.dark #root,
+html.dark [class*="bg-[#F5F7FA]"] {
+  background-color: #08101E !important;
   color: #F1F5F9 !important;
 }
 
-html.dark .bg-white {
+/* All Card Containers, Panels & Dropdowns (Excluding Sidebar Items) */
+html.dark .bg-white:not(aside *),
+html.dark [class~="bg-white"]:not(aside *) {
   background-color: #0F172A !important;
   color: #F1F5F9 !important;
 }
 
-html.dark .border-\[\#E4E8F0\],
-html.dark .border-slate-200,
-html.dark .border-slate-100,
-html.dark .border-slate-200\/90,
-html.dark .border-slate-200\/80 {
+/* All Borders & Dividers */
+html.dark [class*="border-[#E4E8F0]"],
+html.dark [class*="border-slate-200"],
+html.dark [class*="border-slate-100"],
+html.dark [class*="divide-slate-100"] > * {
   border-color: #1E293B !important;
 }
 
-html.dark .bg-\[\#F8FAFC\],
-html.dark .bg-slate-50,
-html.dark .bg-slate-50\/50 {
-  background-color: #0B1528 !important;
+/* Secondary & Muted Backgrounds (Filter bars, table headers, stat wells) */
+html.dark [class*="bg-[#F8FAFC]"],
+html.dark [class*="bg-slate-50"],
+html.dark [class*="bg-slate-100"],
+html.dark thead {
+  background-color: #0B1426 !important;
   color: #E2E8F0 !important;
 }
 
-html.dark .text-slate-900 {
+/* Text Hierarchy */
+html.dark h1,
+html.dark h2,
+html.dark h3,
+html.dark h4,
+html.dark [class*="text-[#101828]"],
+html.dark [class*="text-slate-900"] {
   color: #F8FAFC !important;
 }
 
-html.dark .text-slate-800,
-html.dark .text-slate-700 {
-  color: #E2E8F0 !important;
+html.dark [class*="text-slate-800"],
+html.dark [class*="text-slate-700"] {
+  color: #CBD5E1 !important;
 }
 
-html.dark .text-slate-600,
-html.dark .text-slate-500 {
+html.dark [class*="text-[#64748B]"],
+html.dark [class*="text-slate-600"],
+html.dark [class*="text-slate-500"] {
   color: #94A3B8 !important;
 }
 
-html.dark .hover\:bg-slate-50\/70:hover,
-html.dark .hover\:bg-slate-50:hover,
-html.dark .hover\:bg-slate-100:hover {
-  background-color: #1E293B !important;
+html.dark [class*="text-slate-400"] {
+  color: #64748B !important;
 }
 
+/* Form Inputs, Select Dropdowns, Textareas */
 html.dark input,
-html.dark select {
-  background-color: #0B1528 !important;
-  color: #F1F5F9 !important;
+html.dark select,
+html.dark textarea {
+  background-color: #0B1426 !important;
+  color: #F8FAFC !important;
   border-color: #1E293B !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748B !important;
+}
+
+/* Table Rows & Interactive Hover States */
+html.dark tbody tr:hover,
+html.dark [class*="hover:bg-slate-50"]:hover,
+html.dark [class*="hover:bg-slate-100"]:hover {
+  background-color: #162238 !important;
+}
+
+/* =========================================================================
+   GOVERNMENT COMPLIANCE & STATUTORY SCHEDULES DARK MODE (.gov-table)
+   ========================================================================= */
+
+/* All tables and card borders that used border-black */
+html.dark [class*="border-black"],
+html.dark [class*="border-2 border-black"],
+html.dark [class*="border-b-2 border-black"],
+html.dark [class*="border-r-2 border-black"],
+html.dark [class*="border-t-2 border-black"],
+html.dark [class*="border-r border-black"],
+html.dark [class*="border-b border-black"],
+html.dark .gov-table,
+html.dark .gov-table th,
+html.dark .gov-table td {
+  border-color: #334155 !important;
+}
+
+html.dark [class*="divide-black"] > * {
+  border-color: #334155 !important;
+}
+
+/* Fix text-black in dark mode across all tables, headers, and cells */
+html.dark [class*="text-black"],
+html.dark .gov-table,
+html.dark .gov-table th,
+html.dark .gov-table td,
+html.dark .gov-table h2,
+html.dark .gov-table div {
+  color: #F8FAFC !important;
+}
+
+/* Secondary table header description/subtitles */
+html.dark .gov-table [class*="text-slate-600"],
+html.dark [class*="border-b-2 border-black"] [class*="text-slate-600"],
+html.dark [class*="text-[11px] text-slate-600"] {
+  color: #94A3B8 !important;
+}
+
+/* Table Header Row Shading */
+html.dark .gov-table thead tr,
+html.dark .gov-table [class*="bg-slate-100"] {
+  background-color: #162238 !important;
+  color: #F8FAFC !important;
+}
+
+/* Moderate Column Shading (e.g. Sub-total ER and Sub-total EE columns) */
+html.dark .gov-table [class*="bg-slate-200"],
+html.dark .gov-table [class*="bg-slate-200/60"],
+html.dark [class*="bg-slate-200/60"],
+html.dark [class*="bg-slate-200"] {
+  background-color: #1E2D47 !important;
+  color: #F8FAFC !important;
+}
+
+/* High-Contrast Summary Column (e.g. Grand Total ER + EE column and Footers) */
+html.dark .gov-table [class*="bg-slate-300"],
+html.dark .gov-table tfoot,
+html.dark [class*="bg-slate-300"] {
+  background-color: #243857 !important;
+  color: #FFFFFF !important;
+}
+
+/* Hover effect on dark compliance table rows */
+html.dark .gov-table tbody tr:hover,
+html.dark .gov-table tbody tr:hover td {
+  background-color: #1A2A44 !important;
+}
+
+/* Status Cards & Soft Banners (Dark tinted) */
+html.dark [class*="bg-amber-50"] {
+  background-color: rgba(120, 53, 15, 0.25) !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+  color: #FDE68A !important;
+}
+
+html.dark [class*="bg-sky-50"],
+html.dark [class*="bg-blue-50"],
+html.dark [class*="bg-[#EFF6FF]"],
+html.dark [class*="bg-[#EEF2FF]"] {
+  background-color: rgba(30, 58, 138, 0.25) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+  color: #93C5FD !important;
+}
+
+html.dark [class*="bg-emerald-50"] {
+  background-color: rgba(6, 78, 59, 0.25) !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+  color: #A7F3D0 !important;
+}
+
+html.dark [class*="bg-purple-50"] {
+  background-color: rgba(88, 28, 135, 0.25) !important;
+  border-color: rgba(168, 85, 247, 0.3) !important;
+  color: #DDD6FE !important;
+}
+
+html.dark [class*="bg-rose-50"],
+html.dark [class*="bg-red-50"] {
+  background-color: rgba(159, 18, 57, 0.25) !important;
+  border-color: rgba(244, 63, 94, 0.3) !important;
+  color: #FECDD3 !important;
+}
+
+/* ─── SIDEBAR: Light & Dark Mode ──────────────────────────────────── */
+
+/* Light mode: original deep navy */
+.sidebar-root {
+  background-color: #0B1F3A;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Dark mode: deeper midnight with crisp contrast */
+html.dark .sidebar-root {
+  background-color: #070F1C !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.07) !important;
+}
+
+/* Category row hover: translucent white glow */
+.sidebar-category-row:hover {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  color: #ffffff !important;
+}
+
+/* Inactive submodule hover */
+.sidebar-sub-inactive:hover {
+  background-color: rgba(255, 255, 255, 0.07) !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+/* Active item — amplify glow in dark mode */
+html.dark .sidebar-sub-active {
+  box-shadow: 0 2px 16px rgba(46, 107, 230, 0.55) !important;
+}
+
+/* Sidebar scrollbar — slim & invisible */
+.sidebar-nav::-webkit-scrollbar { width: 3px; }
+.sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 4px; }
+.sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.22); }
+
+/* Top Navbar in Dark Mode */
+html.dark header {
+  background-color: #0B1426 !important;
+  border-bottom-color: #1E293B !important;
 }
 
 .mf-scroll::-webkit-scrollbar { width: 8px; height: 8px; }

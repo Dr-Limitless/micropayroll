@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -12,12 +13,12 @@ export default {
           navy: '#0B1F3A',
           card: '#131b34',
           border: '#1e293b',
-          accent: '#2E6BE6',
-          accentHover: '#1d58cc',
+          accent: 'var(--mf-accent, #2E6BE6)',
+          accentHover: 'var(--mf-accent, #1d58cc)',
         },
         mf: {
           navy: '#0B1F3A',
-          accent: '#2E6BE6',
+          accent: 'var(--mf-accent, #2E6BE6)',
           bg: '#F5F7FA',
           card: '#FFFFFF',
           border: '#E4E8F0',

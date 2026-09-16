@@ -15,18 +15,22 @@ import {
   X,
   RefreshCw,
   Printer,
-  Briefcase
+  Briefcase,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import PayslipModal from '../payslips/PayslipModal';
 import FinalPayModal from '../offboarding/FinalPayModal';
 import PayrollComputationReportModal from './PayrollComputationReportModal';
 import { useAuth } from '../../context/AuthContext';
+import { usePrivacy, isPrivacyActive } from '../../context/PrivacyContext';
 import { canPerformAction } from '../../utils/rbac';
 import { api } from '../../services/api';
 import { ACCENT, badgeStyle } from '../../theme';
 
 
 function formatCurrency(val, rawVal) {
+  if (isPrivacyActive()) return '₱••••••';
   if (rawVal !== undefined && rawVal !== null && !isNaN(Number(rawVal))) {
     return '₱' + Number(rawVal).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
@@ -57,6 +61,38 @@ function formatCurrency(val, rawVal) {
 
 export default function PayrollComputationView({ searchFilter }) {
   const { user } = useAuth();
+  const { privacyMode, togglePrivacyMode, maskMoney } = usePrivacy();
+
+  const fmtMoney = (val, rawVal, prefix = '₱') => {
+    if (privacyMode) return prefix ? '₱••••••' : '••••••';
+    if (rawVal !== undefined && rawVal !== null && !isNaN(Number(rawVal))) {
+      return (prefix || '') + Number(rawVal).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    if (typeof val === 'number') {
+      return (prefix || '') + Number(val).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    if (typeof val === 'string') {
+      if (val.includes('M')) {
+        const num = parseFloat(val.replace(/[^0-9.-]/g, ''));
+        if (!isNaN(num)) {
+          return (prefix || '') + (num * 1000000).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+      }
+      if (val.includes('K')) {
+        const num = parseFloat(val.replace(/[^0-9.-]/g, ''));
+        if (!isNaN(num)) {
+          return (prefix || '') + (num * 1000).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+      }
+      const cleaned = parseFloat(val.replace(/[^0-9.-]/g, ''));
+      if (!isNaN(cleaned)) {
+        return (prefix || '') + cleaned.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+      return val;
+    }
+    return prefix ? '₱0.00' : '0.00';
+  };
+
   const [employees, setEmployees] = useState([]);
   const [summary, setSummary] = useState(null);
   const [period, setPeriod] = useState(null);
@@ -522,7 +558,7 @@ export default function PayrollComputationView({ searchFilter }) {
           </div>
           <div>
             <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-2xl sm:text-[28px] font-extrabold text-[#101828] tracking-tight">
-              {formatCurrency(summary?.total_gross, summary?.total_gross_raw)}
+              {fmtMoney(summary?.total_gross, summary?.total_gross_raw)}
             </div>
             <div className="text-xs text-[#64748B] font-medium mt-0.5">
               {summary?.employees_count || employees.length || 160} employees
@@ -546,7 +582,7 @@ export default function PayrollComputationView({ searchFilter }) {
           </div>
           <div>
             <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-2xl sm:text-[28px] font-extrabold text-[#101828] tracking-tight">
-              {formatCurrency(summary?.total_deductions, summary?.total_deductions_raw)}
+              {fmtMoney(summary?.total_deductions, summary?.total_deductions_raw)}
             </div>
             <div className="text-xs text-[#64748B] font-medium mt-0.5">
               {summary?.deductions_label || 'Tax + statutory'}
@@ -558,16 +594,26 @@ export default function PayrollComputationView({ searchFilter }) {
         {/* Total Net Payout */}
         <div className="bg-white p-5 rounded-[14px] border border-[#E4E8F0] space-y-2 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[12px] font-semibold text-[#64748B]">
-              Total Net Payout
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[12px] font-semibold text-[#64748B]">
+                Total Net Payout
+              </span>
+              <button
+                type="button"
+                onClick={togglePrivacyMode}
+                title={privacyMode ? 'Privacy Mode ON — Click to reveal values' : 'Privacy Mode OFF — Click to hide values'}
+                className="p-1 rounded-md text-slate-400 hover:text-[#2E6BE6] hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                {privacyMode ? <EyeOff className="w-3.5 h-3.5 text-[#2E6BE6]" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
+            </div>
             <div className="w-8 h-8 rounded-lg bg-[#EFF6FF] text-[#2E6BE6] flex items-center justify-center font-bold text-sm">
               <Wallet className="w-4 h-4 text-[#2E6BE6]" />
             </div>
           </div>
           <div>
             <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-2xl sm:text-[28px] font-extrabold text-[#101828] tracking-tight">
-              {formatCurrency(summary?.total_net, summary?.total_net_raw)}
+              {fmtMoney(summary?.total_net, summary?.total_net_raw)}
             </div>
             <div className="text-xs text-[#64748B] font-medium mt-0.5">
               {summary?.payout_date || 'July 25, 2024'}
@@ -644,6 +690,22 @@ export default function PayrollComputationView({ searchFilter }) {
                 <span>Enroll Employee</span>
               </button>
             )}
+
+            {/* Privacy Mode Table Toolbar Toggle */}
+            <button
+              type="button"
+              onClick={togglePrivacyMode}
+              title={privacyMode ? 'Privacy Mode ON — Click to reveal values' : 'Privacy Mode OFF — Click to hide values'}
+              className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs ${
+                privacyMode
+                  ? 'bg-blue-50 border-blue-200 text-[#2E6BE6]'
+                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {privacyMode ? <EyeOff className="w-3.5 h-3.5 text-[#2E6BE6]" /> : <Eye className="w-3.5 h-3.5" />}
+              <span className="hidden sm:inline">{privacyMode ? 'Masked' : 'Mask Pay'}</span>
+            </button>
+
             <button
               onClick={() => loadComputation(selectedMonth)}
               title="Refresh live data"
@@ -662,7 +724,7 @@ export default function PayrollComputationView({ searchFilter }) {
               <div>
                 <span className="font-bold">Previous Period Adjustments (PPA) Active:</span>
                 <span className="ml-1 text-amber-800">
-                  This cut-off includes <strong>₱{Number(employees.reduce((s, e) => s + (e.ppa_earnings || 0), 0)).toLocaleString()}</strong> in late-approved overtime/claims from prior locked periods across {employees.filter(e => e.has_ppa).length} employee(s).
+                  This cut-off includes <strong>{fmtMoney(employees.reduce((s, e) => s + (e.ppa_earnings || 0), 0))}</strong> in late-approved overtime/claims from prior locked periods across {employees.filter(e => e.has_ppa).length} employee(s).
                 </span>
               </div>
             </div>
@@ -740,15 +802,15 @@ export default function PayrollComputationView({ searchFilter }) {
 
                   {/* Basic Pay + Attendance Deductions */}
                   <td className="py-3.5 px-3 whitespace-nowrap font-medium text-slate-800 font-mono">
-                    <div>₱{Number(emp.basic_pay).toLocaleString()}</div>
+                    <div>{fmtMoney(emp.basic_pay)}</div>
                     {emp.tardiness_deduction > 0 && (
                       <div className="text-[10px] text-amber-600 font-sans font-medium">
-                        -{emp.late_minutes}m Late (-₱{Number(emp.tardiness_deduction).toLocaleString()})
+                        -{emp.late_minutes}m Late (-{fmtMoney(emp.tardiness_deduction)})
                       </div>
                     )}
                     {emp.absence_deduction > 0 && (
                       <div className="text-[10px] text-rose-600 font-sans font-medium">
-                        -{emp.absent_days}d Absent (-₱{Number(emp.absence_deduction).toLocaleString()})
+                        -{emp.absent_days}d Absent (-{fmtMoney(emp.absence_deduction)})
                       </div>
                     )}
                   </td>
@@ -757,7 +819,7 @@ export default function PayrollComputationView({ searchFilter }) {
                   <td className="py-3.5 px-3 whitespace-nowrap font-medium text-slate-800 font-mono">
                     {Number(emp.ot_pay) > 0 ? (
                       <div>
-                        <div>₱{Number(emp.ot_pay).toLocaleString()}</div>
+                        <div>{fmtMoney(emp.ot_pay)}</div>
                         {emp.ot_hours > 0 && (
                           <div className="text-[10px] text-emerald-600 font-sans font-semibold">
                             +{emp.ot_hours} hrs OT
@@ -771,7 +833,7 @@ export default function PayrollComputationView({ searchFilter }) {
                   <td className="py-3.5 px-3 whitespace-nowrap font-medium font-mono text-purple-700">
                     {(Number(emp.holiday_pay) > 0 || Number(emp.night_diff_pay) > 0) ? (
                       <div>
-                        <div>+₱{Number((emp.holiday_pay || 0) + (emp.night_diff_pay || 0)).toLocaleString()}</div>
+                        <div>+{fmtMoney((emp.holiday_pay || 0) + (emp.night_diff_pay || 0))}</div>
                         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                           {Number(emp.holiday_pay) > 0 && (
                             <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-200">
@@ -794,7 +856,7 @@ export default function PayrollComputationView({ searchFilter }) {
                   <td className="py-3.5 px-3 whitespace-nowrap font-medium text-indigo-700 font-mono">
                     {Number(emp.allowances) > 0 ? (
                       <div>
-                        <div>+₱{Number(emp.allowances).toLocaleString()}</div>
+                        <div>+{fmtMoney(emp.allowances)}</div>
                         <span className="text-[9px] px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
                           {emp.is_semi_monthly ? 'Cut-off Share' : 'Monthly'}
                         </span>
@@ -808,7 +870,7 @@ export default function PayrollComputationView({ searchFilter }) {
                   <td className="py-3.5 px-3 whitespace-nowrap font-semibold font-mono text-emerald-600">
                     {Number(emp.reimbursements) > 0 ? (
                       <div>
-                        <div>+₱{Number(emp.reimbursements).toLocaleString()}</div>
+                        <div>+{fmtMoney(emp.reimbursements)}</div>
                         <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
                           Claims
                         </span>
@@ -820,26 +882,26 @@ export default function PayrollComputationView({ searchFilter }) {
 
                   {/* Gross */}
                   <td className="py-3.5 px-3 whitespace-nowrap font-mono">
-                    <div className="font-extrabold text-slate-900">₱{Number(emp.gross_pay).toLocaleString()}</div>
+                    <div className="font-extrabold text-slate-900">{fmtMoney(emp.gross_pay)}</div>
                     {emp.has_ppa && (
                       <div 
-                        title={emp.ppa_items?.map(p => `${p.label || p.description}: ₱${Number(p.amount).toLocaleString()}`).join('\n')}
+                        title={emp.ppa_items?.map(p => `${p.label || p.description}: ${fmtMoney(p.amount)}`).join('\n')}
                         className="inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300 shadow-xs cursor-help"
                       >
-                        <span>🔄 PPA: +₱{Number(emp.ppa_earnings).toLocaleString()}</span>
+                        <span>🔄 PPA: +{fmtMoney(emp.ppa_earnings)}</span>
                       </div>
                     )}
                   </td>
 
                   {/* BIR Tax */}
                   <td className="py-3.5 px-3 whitespace-nowrap font-semibold text-red-500 font-mono">
-                    ₱{Number(emp.bir_tax).toLocaleString()}
+                    {fmtMoney(emp.bir_tax)}
                   </td>
 
                   {/* SSS */}
                   <td className="py-3.5 px-3 whitespace-nowrap font-semibold font-mono">
                     {Number(emp.sss) > 0 ? (
-                      <span className="text-red-500">₱{Number(emp.sss).toLocaleString()}</span>
+                      <span className="text-red-500">{fmtMoney(emp.sss)}</span>
                     ) : emp.is_semi_monthly && emp.cut_off_type === '1st' ? (
                       <div>
                         <span className="text-slate-400">₱0</span>
@@ -853,7 +915,7 @@ export default function PayrollComputationView({ searchFilter }) {
                   {/* PhilHealth */}
                   <td className="py-3.5 px-3 whitespace-nowrap font-semibold font-mono">
                     {Number(emp.philhealth) > 0 ? (
-                      <span className="text-red-500">₱{Number(emp.philhealth).toLocaleString()}</span>
+                      <span className="text-red-500">{fmtMoney(emp.philhealth)}</span>
                     ) : emp.is_semi_monthly && emp.cut_off_type === '1st' ? (
                       <div>
                         <span className="text-slate-400">₱0</span>
@@ -867,7 +929,7 @@ export default function PayrollComputationView({ searchFilter }) {
                   {/* Pag-IBIG */}
                   <td className="py-3.5 px-3 whitespace-nowrap font-semibold font-mono">
                     {Number(emp.pagibig) > 0 ? (
-                      <span className="text-red-500">₱{Number(emp.pagibig).toLocaleString()}</span>
+                      <span className="text-red-500">{fmtMoney(emp.pagibig)}</span>
                     ) : emp.is_semi_monthly && emp.cut_off_type === '1st' ? (
                       <div>
                         <span className="text-slate-400">₱0</span>
@@ -882,7 +944,7 @@ export default function PayrollComputationView({ searchFilter }) {
                   <td className="py-3.5 px-3 whitespace-nowrap font-semibold text-pink-600 font-mono">
                     {Number(emp.hmo_deduction) > 0 ? (
                       <div>
-                        <div>-₱{Number(emp.hmo_deduction).toLocaleString()}</div>
+                        <div>-{fmtMoney(emp.hmo_deduction)}</div>
                         <div className="text-[9px] text-pink-500 font-sans flex items-center gap-1">
                           <span>{emp.hmo_plan || 'HMO'}</span>
                           {emp.hmo_is_prorated && (
@@ -901,9 +963,9 @@ export default function PayrollComputationView({ searchFilter }) {
                   <td className="py-3.5 px-3 whitespace-nowrap font-semibold text-amber-600 font-mono">
                     {Number(emp.microloan_deduction) > 0 ? (
                       <div>
-                        <div>-₱{Number(emp.microloan_deduction).toLocaleString()}</div>
+                        <div>-{fmtMoney(emp.microloan_deduction)}</div>
                         <div className="text-[9px] text-amber-500 font-sans">
-                          Bal: ₱{Number(emp.loan_balance_remaining).toLocaleString()}
+                          Bal: {fmtMoney(emp.loan_balance_remaining)}
                         </div>
                       </div>
                     ) : (
@@ -913,7 +975,7 @@ export default function PayrollComputationView({ searchFilter }) {
 
                   {/* Net Pay */}
                   <td className="py-3.5 px-3 whitespace-nowrap font-black text-[#2E6BE6] font-mono text-sm">
-                    ₱{Number(emp.net_pay).toLocaleString()}
+                    {fmtMoney(emp.net_pay)}
                   </td>
 
                   {/* Interactive Status Badge */}

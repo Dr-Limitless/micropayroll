@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { canPerformAction } from '../../utils/rbac';
 import PayslipModal from '../payslips/PayslipModal';
 import GovernmentComplianceView from '../payroll/GovernmentComplianceView';
+import { usePrivacy, isPrivacyActive, PRIVACY_MASK } from '../../context/PrivacyContext';
 import { ACCENT, badgeStyle, cardStyle } from '../../theme';
 import {
   CheckCircle2,
@@ -43,11 +44,16 @@ import {
   AlertTriangle,
   ExternalLink,
   ChevronDown,
-  Search
+  Search,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 /* ─────────────────────────────────────────────────────── Shared Helpers */
 function fmt(n, raw) {
+  if (isPrivacyActive()) {
+    return PRIVACY_MASK;
+  }
   if (raw !== undefined && raw !== null && !isNaN(Number(raw))) {
     return '₱' + Number(raw).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
@@ -121,11 +127,12 @@ function SectionHeader({ color = ACCENT, title, sub }) {
 }
 
 function KpiCard({ label, value, sub, color = 'text-slate-900', icon: Icon }) {
+  const displayVal = (typeof value === 'string' && value.includes('₱') && isPrivacyActive()) ? PRIVACY_MASK : value;
   return (
     <div className="p-5 bg-white rounded-[14px] border border-[#E4E8F0] shadow-sm flex items-start justify-between">
       <div className="space-y-1">
         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>
-        <div className={`text-2xl font-extrabold tracking-tight font-display ${color}`}>{value}</div>
+        <div className={`text-2xl font-extrabold tracking-tight font-display ${color}`}>{displayVal}</div>
         {sub && <div className="text-xs text-slate-500 font-medium">{sub}</div>}
       </div>
       {Icon && (
@@ -2588,6 +2595,8 @@ function GovernmentComplianceModule() {
    Maps each of the 15 distinct submodules to its dedicated view
 ═══════════════════════════════════════════════════════════════ */
 export default function ModuleContentView({ moduleId, moduleLabel, categoryLabel }) {
+  const { privacyMode } = usePrivacy();
+
   // 1. Payroll Management Submodules
   if (moduleId === 'payslips') return <PayslipsModule />;
   if (moduleId === 'timekeeping') return <TimekeepingModule />;

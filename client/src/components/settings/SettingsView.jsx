@@ -20,6 +20,7 @@ import {
   EyeOff,
   Sliders
 } from 'lucide-react';
+import { usePrivacy } from '../../context/PrivacyContext';
 
 const ACCENT_PRESETS = [
   { name: 'Royal Blue (Default)', hex: '#2E6BE6', bg: 'bg-[#2E6BE6]' },
@@ -31,6 +32,7 @@ const ACCENT_PRESETS = [
 
 export default function SettingsView() {
   const { user, updateUser } = useAuth();
+  const { privacyMode, togglePrivacyMode } = usePrivacy();
   const [activeTab, setActiveTab] = useState('profile');
 
   // Profile Form State
@@ -106,9 +108,11 @@ export default function SettingsView() {
     setIsDarkMode(enableDark);
     if (enableDark) {
       document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
       localStorage.setItem('mms_theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
       localStorage.setItem('mms_theme', 'light');
     }
     setUiSavedFeedback(true);
@@ -288,10 +292,15 @@ export default function SettingsView() {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-                isActive 
-                  ? 'border-[#2E6BE6] text-[#2E6BE6] bg-blue-50/40 rounded-t-lg' 
-                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+              style={isActive ? {
+                borderBottomColor: 'var(--mf-accent, #2E6BE6)',
+                color: 'var(--mf-accent, #2E6BE6)',
+                background: 'color-mix(in srgb, var(--mf-accent, #2E6BE6) 12%, transparent)'
+              } : {}}
+              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap rounded-t-lg ${
+                !isActive 
+                  ? 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300' 
+                  : ''
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -598,10 +607,16 @@ export default function SettingsView() {
           </div>
 
           {/* Accent Color Presets */}
-          <div className="space-y-3 pt-3 border-t border-slate-100">
-            <label className="block text-xs font-bold text-slate-800">
-              Primary Accent &amp; Button Color
-            </label>
+          <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <div>
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                Primary Accent &amp; Button Color
+              </label>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Customizes primary action buttons, active navigation badges, tabs, and indicator bars throughout the system.
+              </p>
+            </div>
+
             <div className="flex flex-wrap gap-3">
               {ACCENT_PRESETS.map(preset => {
                 const isSelected = selectedAccent === preset.hex;
@@ -610,24 +625,87 @@ export default function SettingsView() {
                     key={preset.hex}
                     type="button"
                     onClick={() => handleAccentChange(preset.hex)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+                    style={isSelected ? {
+                      borderColor: preset.hex,
+                      boxShadow: `0 0 0 2px ${preset.hex}33`,
+                      background: `color-mix(in srgb, ${preset.hex} 8%, transparent)`
+                    } : {}}
+                    className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                       isSelected 
-                        ? 'border-slate-900 shadow-sm ring-2 ring-slate-900/10' 
-                        : 'border-slate-200 hover:border-slate-300'
+                        ? 'font-bold' 
+                        : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 text-slate-700 dark:text-slate-300'
                     }`}
                   >
-                    <span className={`w-3.5 h-3.5 rounded-full ${preset.bg}`} />
+                    <span 
+                      className="w-4 h-4 rounded-full shrink-0 shadow-xs" 
+                      style={{ background: preset.hex }} 
+                    />
                     <span>{preset.name}</span>
-                    {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-slate-900 ml-1" />}
+                    {isSelected && (
+                      <CheckCircle2 
+                        className="w-4 h-4 ml-1 shrink-0" 
+                        style={{ color: preset.hex }} 
+                      />
+                    )}
                   </button>
                 );
               })}
             </div>
+
+            {/* Live Visual Feedback Showcase */}
+            <div className="mt-4 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-900/40 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Live System Theme Preview
+                </span>
+                <span 
+                  className="text-[11px] font-bold px-2 py-0.5 rounded-md"
+                  style={{
+                    background: 'color-mix(in srgb, var(--mf-accent, #2E6BE6) 15%, transparent)',
+                    color: 'var(--mf-accent, #2E6BE6)'
+                  }}
+                >
+                  Active Color
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                {/* Primary Action Button Preview */}
+                <button
+                  type="button"
+                  style={{ background: 'var(--mf-accent, #2E6BE6)' }}
+                  className="px-4 py-2 text-white font-bold text-xs rounded-lg shadow-sm flex items-center gap-1.5 cursor-default"
+                >
+                  <span>Primary Action Button</span>
+                </button>
+
+                {/* Soft Tag / Pill Preview */}
+                <span
+                  style={{
+                    background: 'color-mix(in srgb, var(--mf-accent, #2E6BE6) 12%, transparent)',
+                    color: 'var(--mf-accent, #2E6BE6)',
+                    borderColor: 'color-mix(in srgb, var(--mf-accent, #2E6BE6) 25%, transparent)'
+                  }}
+                  className="px-3 py-1 rounded-full text-xs font-bold border inline-flex items-center gap-1.5"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--mf-accent, #2E6BE6)' }} />
+                  System Tag &amp; Badge
+                </span>
+
+                {/* Highlight Text Preview */}
+                <span 
+                  style={{ color: 'var(--mf-accent, #2E6BE6)' }} 
+                  className="text-xs font-black tracking-tight"
+                >
+                  {privacyMode ? '₱•••••• (Net Metric)' : '₱250,749.00 (Net Metric)'}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Font Size Scaling */}
-          <div className="space-y-3 pt-3 border-t border-slate-100">
-            <label className="block text-xs font-bold text-slate-800">
+          <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
               Interface Font Size
             </label>
             <div className="flex items-center gap-3 max-w-md">
@@ -642,13 +720,65 @@ export default function SettingsView() {
                   onClick={() => handleFontSizeChange(opt.id)}
                   className={`flex-1 py-2 px-3 rounded-lg border text-xs font-semibold text-center transition-all cursor-pointer ${
                     fontSize === opt.id 
-                      ? 'border-[#2E6BE6] bg-[#EFF6FF] text-[#2E6BE6]' 
-                      : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                      ? 'border-[#2E6BE6] bg-[#EFF6FF] dark:bg-blue-950/40 text-[#2E6BE6]' 
+                      : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
                   }`}
                 >
                   {opt.label}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Financial Privacy Mode Setting */}
+          <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Financial Privacy Mode (GCash-Style Masking)
+                </label>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 max-w-lg">
+                  When enabled, all sensitive monetary values across payroll sheets, compensation packages, loan balances, and dashboards are masked by default (e.g. ₱••••••). You can still reveal figures on demand via quick eye toggles.
+                </p>
+              </div>
+
+              {/* Toggle Switch */}
+              <button
+                type="button"
+                onClick={togglePrivacyMode}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  privacyMode ? 'bg-[#2E6BE6]' : 'bg-slate-200 dark:bg-slate-700'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                    privacyMode ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-xl border border-slate-200/70 dark:border-slate-700/70 bg-slate-50/60 dark:bg-slate-900/30 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className={`p-2 rounded-lg ${privacyMode ? 'bg-blue-100 dark:bg-blue-900/40 text-[#2E6BE6]' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
+                  {privacyMode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    Current Privacy Status: {privacyMode ? 'Masked (Privacy Mode Active)' : 'Revealed (Standard Numbers Visible)'}
+                  </div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Sample Value Display: <span className="font-mono font-bold text-slate-800 dark:text-white">{privacyMode ? '₱••••••' : '₱250,749.00'}</span>
+                  </div>
+                </div>
+              </div>
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                privacyMode 
+                  ? 'bg-blue-100 text-[#2E6BE6] border border-blue-200' 
+                  : 'bg-slate-100 text-slate-600 border border-slate-200'
+              }`}>
+                {privacyMode ? 'PROTECTED' : 'VISIBLE'}
+              </span>
             </div>
           </div>
         </div>

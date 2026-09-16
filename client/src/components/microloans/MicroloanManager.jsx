@@ -11,12 +11,16 @@ import {
   ShieldCheck, 
   Percent, 
   AlertCircle,
-  X
+  X,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { usePrivacy } from '../../context/PrivacyContext';
 
 export default function MicroloanManager() {
   const { user } = useAuth();
+  const { privacyMode, togglePrivacyMode, maskMoney } = usePrivacy();
   const [loans, setLoans] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [showApplyModal, setShowApplyModal] = useState(false);
@@ -103,9 +107,19 @@ export default function MicroloanManager() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="p-5 rounded-[14px] bg-white border border-[#E4E8F0] shadow-sm">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Active Loan Pool</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Active Loan Pool</span>
+            <button
+              type="button"
+              onClick={togglePrivacyMode}
+              title={privacyMode ? 'Privacy Mode ON — Click to reveal values' : 'Privacy Mode OFF — Click to hide values'}
+              className="p-1 rounded-md text-slate-400 hover:text-[#2E6BE6] hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              {privacyMode ? <EyeOff className="w-3.5 h-3.5 text-[#2E6BE6]" /> : <Eye className="w-3.5 h-3.5" />}
+            </button>
+          </div>
           <div className="text-2xl font-black text-slate-900 mt-1 font-display">
-            ₱{totalOutstanding.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {maskMoney(`₱${totalOutstanding.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)}
           </div>
           <div className="text-[11px] text-[#2E6BE6] font-semibold mt-0.5">Automated cut-off deduction linked</div>
         </div>
@@ -133,6 +147,19 @@ export default function MicroloanManager() {
           <div className="text-xs font-bold text-slate-800 uppercase tracking-wider">
             All Assistance Records ({loans.length})
           </div>
+          <button
+            type="button"
+            onClick={togglePrivacyMode}
+            title={privacyMode ? 'Privacy Mode ON — Click to reveal values' : 'Privacy Mode OFF — Click to hide values'}
+            className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+              privacyMode
+                ? 'bg-blue-50 border-blue-200 text-[#2E6BE6]'
+                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            {privacyMode ? <EyeOff className="w-3.5 h-3.5 text-[#2E6BE6]" /> : <Eye className="w-3.5 h-3.5" />}
+            <span className="hidden sm:inline">{privacyMode ? 'Masked' : 'Mask Figures'}</span>
+          </button>
         </div>
 
         <div className="overflow-x-auto">
@@ -161,16 +188,16 @@ export default function MicroloanManager() {
                     <div className="text-[10px] text-slate-400 truncate max-w-xs">{loan.reason}</div>
                   </td>
                   <td className="py-3.5 px-4 whitespace-nowrap font-mono font-bold text-slate-900">
-                    ₱{Number(loan.principal_amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {maskMoney(`₱${Number(loan.principal_amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)}
                   </td>
                   <td className="py-3.5 px-4 whitespace-nowrap font-mono text-[#2E6BE6] font-semibold">
-                    ₱{Number(loan.monthly_deduction).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
+                    {privacyMode ? maskMoney('') + '/mo' : `₱${Number(loan.monthly_deduction).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo`}
                   </td>
                   <td className="py-3.5 px-4 whitespace-nowrap text-slate-600">
                     {loan.remaining_installments} of {loan.total_installments} mos
                   </td>
                   <td className="py-3.5 px-4 whitespace-nowrap font-mono font-black text-slate-900">
-                    ₱{Number(loan.balance_amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {maskMoney(`₱${Number(loan.balance_amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)}
                   </td>
                   <td className="py-3.5 px-4 whitespace-nowrap">
                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${

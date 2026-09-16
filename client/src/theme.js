@@ -1,5 +1,6 @@
-﻿// MicroFin OS Theme Tokens extracted from microfin-os-main
-export const ACCENT = "#2E6BE6";
+// MicroFin OS Theme Tokens — accent uses CSS variable so Settings picker applies app-wide
+export const ACCENT = "var(--mf-accent, #2E6BE6)";
+export const ACCENT_HEX = "#2E6BE6"; // default fallback hex (for places that need a raw color)
 export const ACCENT_OPTIONS = ["#2E6BE6", "#0E7C61", "#5B4FE9", "#B45309"];
 
 export const STATUS_COLORS = {

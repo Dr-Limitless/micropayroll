@@ -11,12 +11,16 @@ import {
   Building2, 
   Clock,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { usePrivacy } from '../../context/PrivacyContext';
 
 export default function OverviewDashboard({ onNavigate }) {
   const { user } = useAuth();
+  const { privacyMode, togglePrivacyMode, maskMoney } = usePrivacy();
   const [employees, setEmployees] = useState([]);
   const [payrollPeriods, setPayrollPeriods] = useState([]);
   const [microloans, setMicroloans] = useState([]);
@@ -100,14 +104,24 @@ export default function OverviewDashboard({ onNavigate }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-[14px] border border-[#E4E8F0] shadow-sm space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Net Payroll</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Payroll Disbursed</span>
+              <button
+                type="button"
+                onClick={togglePrivacyMode}
+                title={privacyMode ? 'Privacy Mode ON — Click to reveal values' : 'Privacy Mode OFF — Click to hide values'}
+                className="p-1 rounded-md text-slate-400 hover:text-[#2E6BE6] hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                {privacyMode ? <EyeOff className="w-3.5 h-3.5 text-[#2E6BE6]" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
+            </div>
             <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
               <DollarSign className="w-4 h-4" />
             </div>
           </div>
           <div>
-            <div className="text-2xl font-black text-slate-900 tracking-tight font-display">
-              ₱{totalPayroll.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <div className="text-2xl font-black text-slate-900 tracking-tight font-display flex items-center gap-2">
+              <span>{maskMoney(`₱${totalPayroll.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)}</span>
             </div>
             <div className="flex items-center text-xs text-emerald-600 font-semibold mt-1">
               <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" />
@@ -135,14 +149,24 @@ export default function OverviewDashboard({ onNavigate }) {
 
         <div className="bg-white p-5 rounded-[14px] border border-[#E4E8F0] shadow-sm space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Microloans Outstanding</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Microloans Outstanding</span>
+              <button
+                type="button"
+                onClick={togglePrivacyMode}
+                title={privacyMode ? 'Privacy Mode ON — Click to reveal values' : 'Privacy Mode OFF — Click to hide values'}
+                className="p-1 rounded-md text-slate-400 hover:text-[#2E6BE6] hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                {privacyMode ? <EyeOff className="w-3.5 h-3.5 text-[#2E6BE6]" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
+            </div>
             <div className="p-2 rounded-xl bg-blue-50 text-[#2E6BE6]">
               <Landmark className="w-4 h-4" />
             </div>
           </div>
           <div>
             <div className="text-2xl font-black text-slate-900 tracking-tight font-display">
-              ₱{totalLoansBalance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {maskMoney(`₱${totalLoansBalance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)}
             </div>
             <div className="text-xs text-[#2E6BE6] font-medium mt-1">
               {microloans.filter(m => m.status === 'Active').length} Active Amortizations
@@ -215,9 +239,9 @@ export default function OverviewDashboard({ onNavigate }) {
                   </div>
 
                   <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1">
-                    <div>Gross: <strong className="text-slate-800">₱{gross.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
-                    <div>Deductions: <strong className="text-amber-700">₱{deductions.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
-                    <div>Net Disbursed: <strong className="text-emerald-700 font-bold">₱{net.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
+                    <div>Gross: <strong className="text-slate-800">{maskMoney(`₱${gross.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)}</strong></div>
+                    <div>Deductions: <strong className="text-amber-700">{maskMoney(`₱${deductions.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)}</strong></div>
+                    <div>Net Disbursed: <strong className="text-emerald-700 font-bold">{maskMoney(`₱${net.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)}</strong></div>
                   </div>
                 </div>
               );

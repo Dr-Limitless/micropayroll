@@ -8,8 +8,7 @@ import {
   ShieldCheck, 
   ArrowLeft, 
   Loader2, 
-  CheckCircle2,
-  Users
+  CheckCircle2
 } from 'lucide-react';
 import { ACCENT } from '../../theme';
 import { api } from '../../services/api';
@@ -18,26 +17,16 @@ export default function FigmaSignInForm({ onLoginSuccess }) {
   const { login, verify2FA, loading: authLoading } = useAuth();
 
   const [step, setStep] = useState('credentials');
-  const [email, setEmail] = useState('hr.manager@mms.com');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successUser, setSuccessUser] = useState(null);
-  const [personas, setPersonas] = useState([]);
 
   // 2FA step state
   const [totpCode, setTotpCode] = useState('');
   const totpRef = useRef(null);
-
-  useEffect(() => {
-    // Load available test personas
-    api.getPersonas().then(data => {
-      if (data && data.personas) {
-        setPersonas(data.personas);
-      }
-    }).catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (step === '2fa' && totpRef.current) {
@@ -95,12 +84,6 @@ export default function FigmaSignInForm({ onLoginSuccess }) {
       setErrorMsg(res.error || 'Invalid verification code. Please try again.');
       setTotpCode('');
     }
-  };
-
-  const selectPersona = (pEmail) => {
-    setEmail(pEmail);
-    setPassword('password123');
-    setErrorMsg('');
   };
 
   // --- Success Splash Animation ---
@@ -248,6 +231,7 @@ export default function FigmaSignInForm({ onLoginSuccess }) {
             <input
               type="email"
               required
+              autoComplete="off"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@microfin.io"
@@ -274,6 +258,7 @@ export default function FigmaSignInForm({ onLoginSuccess }) {
             <input
               type={showPassword ? 'text' : 'password'}
               required
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
@@ -357,42 +342,6 @@ export default function FigmaSignInForm({ onLoginSuccess }) {
           )}
         </button>
       </form>
-
-      {/* Quick Switch Test Personas matching MicroFin OS */}
-      <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid #E4E8F0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 10 }}>
-          <Users style={{ width: 13, height: 13 }} />
-          <span>Quick Demo Personas</span>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {[
-            { label: 'HR Manager', email: 'hr.manager@mms.com' },
-            { label: 'Maria Santos (Employee)', email: 'maria.santos@mms.com' },
-            { label: 'Finance Officer', email: 'officer@mms.com' },
-            { label: 'Director', email: 'director@mms.com' },
-            { label: 'Admin', email: 'admin@mms.com' },
-          ].map((item) => (
-            <button
-              key={item.email}
-              type="button"
-              onClick={() => selectPersona(item.email)}
-              style={{
-                fontSize: 11.5,
-                fontWeight: 600,
-                padding: '5px 10px',
-                borderRadius: 6,
-                border: email === item.email ? `1px solid ${ACCENT}` : '1px solid #E4E8F0',
-                background: email === item.email ? '#EFF6FF' : '#F8FAFC',
-                color: email === item.email ? ACCENT : '#475467',
-                cursor: 'pointer',
-                transition: 'all .12s'
-              }}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Search, Bell, LogOut, ChevronDown, Shield, ShieldCheck, CheckCheck, Clock, AlertCircle, Info, X, ArrowRight } from 'lucide-react';
+import { Search, Bell, LogOut, ChevronDown, Shield, ShieldCheck, CheckCheck, Clock, AlertCircle, Info, X, ArrowRight, Settings, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { usePrivacy } from '../../context/PrivacyContext';
 import { api } from '../../services/api';
 import TwoFactorModal from '../security/TwoFactorModal';
 import { ACCENT } from '../../theme';
@@ -20,7 +21,9 @@ const SEARCHABLE_MODULES = [
   { id: 'benefits_monitoring', label: 'Employee Benefits Monitoring', category: 'HMO & Benefits Administration', keywords: 'utilization coverage cardholder tier' },
   { id: 'realtime_dashboard', label: 'Real-Time Payroll Dashboard', category: 'HR Analytics Dashboard', keywords: 'analytics gross deductions net chart kpi' },
   { id: 'financial_reporting', label: 'Financial Reporting', category: 'HR Analytics Dashboard', keywords: 'journal ledger voucher debit credit audit' },
-  { id: 'government_compliance', label: 'Government Compliance Reports', category: 'HR Analytics Dashboard', keywords: 'sss philhealth pagibig bir 1601c 2316 schedule book table' }
+  { id: 'government_compliance', label: 'Government Compliance Reports', category: 'HR Analytics Dashboard', keywords: 'sss philhealth pagibig bir 1601c 2316 schedule book table' },
+  { id: 'audit_logs', label: 'Audit Logs', category: 'HR Analytics Dashboard', keywords: 'audit logs security trail event sha256 checksum activity history tamper' },
+  { id: 'settings', label: 'Settings & Preferences', category: 'Account Preferences', keywords: 'settings profile password email username dark light mode notifications theme appearance font' }
 ];
 
 const SEARCHABLE_EMPLOYEES = [
@@ -62,6 +65,7 @@ function timeAgo(iso) {
 
 export default function Navbar({ activeModule, categoryLabel, moduleLabel, onNavigate, taskCounts = {} }) {
   const { user, logout } = useAuth();
+  const { privacyMode, togglePrivacyMode } = usePrivacy();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -184,20 +188,27 @@ export default function Navbar({ activeModule, categoryLabel, moduleLabel, onNav
 
   return (
     <>
-      <header className="bg-white border-b border-[#E4E8F0] sticky top-0 z-30 px-6 sm:px-8 h-16 flex items-center justify-between">
+      <header className="bg-white dark:bg-[#0F172A] border-b border-[#E4E8F0] dark:border-[#1E293B] sticky top-0 z-30 px-6 sm:px-8 h-16 flex items-center justify-between transition-colors duration-200">
       {/* Left Breadcrumb & Module indicator */}
       <div key={activeModule} className="flex items-center space-x-3 animate-header-fade">
-        <div className="w-1.5 h-6 bg-[#2E6BE6] rounded-full shrink-0" />
+        <div className="w-1.5 h-6 rounded-full shrink-0 transition-colors" style={{ background: 'var(--mf-accent, #2E6BE6)' }} />
         <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider leading-none">
+          <span className="text-[10px] font-bold text-[#64748B] dark:text-slate-400 uppercase tracking-wider leading-none">
             {categoryLabel || 'PAYROLL MANAGEMENT'}
           </span>
-          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-[17px] font-bold text-[#101828] leading-tight">
+          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-[17px] font-bold text-[#101828] dark:text-white leading-tight">
             {moduleLabel || 'Payroll Computation'}
           </span>
         </div>
-        <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EEF2FF] text-[#2E6BE6] text-[11px] font-semibold">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#2E6BE6]" />
+        <span 
+          className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border transition-all"
+          style={{ 
+            background: 'color-mix(in srgb, var(--mf-accent, #2E6BE6) 12%, transparent)', 
+            color: 'var(--mf-accent, #2E6BE6)', 
+            borderColor: 'color-mix(in srgb, var(--mf-accent, #2E6BE6) 25%, transparent)' 
+          }}
+        >
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--mf-accent, #2E6BE6)' }} />
           {categoryLabel || 'Payroll Management'}
         </span>
       </div>
@@ -221,7 +232,7 @@ export default function Navbar({ activeModule, categoryLabel, moduleLabel, onNav
               if (e.key === 'Escape') setSearchOpen(false);
             }}
             placeholder="Search employees, claims, modules..."
-            className="w-full pl-9 pr-7 py-2 text-[13px] rounded-lg border border-[#E4E8F0] bg-[#F8FAFC] text-[#101828] placeholder:text-[#94A3B8] focus:bg-white focus:border-[#2E6BE6] focus:ring-1 focus:ring-[#2E6BE6] outline-none transition-all"
+            className="w-full pl-9 pr-7 py-2 text-[13px] rounded-lg border border-[#E4E8F0] dark:border-[#334155] bg-[#F8FAFC] dark:bg-[#1E293B]/70 text-[#101828] dark:text-white placeholder:text-[#94A3B8] focus:bg-white dark:focus:bg-[#1E293B] focus:border-[#2E6BE6] focus:ring-1 focus:ring-[#2E6BE6] outline-none transition-all"
           />
           {searchQuery && (
             <button
@@ -319,11 +330,33 @@ export default function Navbar({ activeModule, categoryLabel, moduleLabel, onNav
           )}
         </div>
 
+        {/* Privacy Mode Toggle */}
+        <button
+          type="button"
+          onClick={togglePrivacyMode}
+          title={privacyMode ? 'Privacy Mode ON — Click to reveal values' : 'Privacy Mode OFF — Click to hide values'}
+          className={`relative w-[34px] h-[34px] rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 ${
+            privacyMode
+              ? 'text-white ring-2'
+              : 'bg-[#F1F5F9] dark:bg-[#1E293B] text-[#64748B] dark:text-slate-300 hover:text-[#101828] dark:hover:text-white hover:bg-[#E2E8F0] dark:hover:bg-[#334155]'
+          }`}
+          style={privacyMode ? {
+            background: 'var(--mf-accent, #2E6BE6)',
+            boxShadow: '0 0 10px color-mix(in srgb, var(--mf-accent, #2E6BE6) 40%, transparent)',
+            ringColor: 'var(--mf-accent, #2E6BE6)'
+          } : {}}
+        >
+          {privacyMode
+            ? <EyeOff className="w-4 h-4" />
+            : <Eye className="w-4 h-4" />
+          }
+        </button>
+
         {/* Notification Bell */}
         <div className="relative" ref={bellRef}>
           <button
             onClick={() => setBellOpen(prev => !prev)}
-            className="relative w-[34px] h-[34px] rounded-full bg-[#F1F5F9] flex items-center justify-center text-[#64748B] hover:text-[#101828] hover:bg-[#E2E8F0] cursor-pointer transition-colors"
+            className="relative w-[34px] h-[34px] rounded-full bg-[#F1F5F9] dark:bg-[#1E293B] flex items-center justify-center text-[#64748B] dark:text-slate-300 hover:text-[#101828] dark:hover:text-white hover:bg-[#E2E8F0] dark:hover:bg-[#334155] cursor-pointer transition-colors"
             title="Notifications"
           >
             <Bell className="w-4 h-4" />
@@ -334,13 +367,13 @@ export default function Navbar({ activeModule, categoryLabel, moduleLabel, onNav
 
           {/* Notifications Flyout */}
           {bellOpen && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl bg-white border border-[#E4E8F0] shadow-xl z-50 overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-[#F1F5F9] bg-[#F8FAFC]">
+            <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl bg-white dark:bg-[#0F172A] border border-[#E4E8F0] dark:border-[#1E293B] shadow-xl z-50 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-[#F1F5F9] dark:border-[#1E293B] bg-[#F8FAFC] dark:bg-[#0B1426]">
                 <div className="flex items-center space-x-2">
                   <Bell className="w-3.5 h-3.5 text-[#2E6BE6]" />
-                  <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-sm font-bold text-[#101828]">Notifications</span>
+                  <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-sm font-bold text-[#101828] dark:text-white">Notifications</span>
                   {unreadCount > 0 && (
-                    <span className="px-1.5 py-0.5 rounded-full bg-blue-100 text-[#2E6BE6] text-[10px] font-bold">
+                    <span className="px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-[#2E6BE6] dark:text-blue-300 text-[10px] font-bold">
                       {unreadCount} new
                     </span>
                   )}
@@ -423,51 +456,51 @@ export default function Navbar({ activeModule, categoryLabel, moduleLabel, onNav
             title="User Profile Menu"
             className="flex items-center space-x-2 p-1 rounded-xl hover:bg-slate-100 transition-all cursor-pointer"
           >
-            <div className="w-8 h-8 rounded-full bg-[#7c3aed] text-white font-bold flex items-center justify-center text-xs shadow-sm hover:ring-2 hover:ring-purple-300 transition-all">
+            <div 
+              className="w-8 h-8 rounded-full text-white font-bold flex items-center justify-center text-xs shadow-sm hover:ring-2 transition-all"
+              style={{ background: 'var(--mf-accent, #2E6BE6)', '--tw-ring-color': 'var(--mf-accent, #2E6BE6)' }}
+            >
               {initials}
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
 
           {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white border border-slate-200 shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-              <div className="px-4 py-3 border-b border-slate-100">
-                <div className="font-bold text-slate-900 text-sm">{displayName}</div>
-                <div className="text-xs text-slate-500 truncate">{displayEmail}</div>
-                <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full bg-purple-50 text-[#7c3aed] font-semibold text-[10px] border border-purple-100">
+            <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-[#1E293B] shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="px-4 py-3 border-b border-slate-100 dark:border-[#1E293B]">
+                <div className="font-bold text-slate-900 dark:text-white text-sm">{displayName}</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{displayEmail}</div>
+                <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/50 text-[#7c3aed] dark:text-purple-300 font-semibold text-[10px] border border-purple-100 dark:border-purple-800/40">
                   {displayRole}
                 </span>
               </div>
-              <div className="px-4 py-2 border-b border-slate-100 text-[11px] text-slate-500 flex items-center space-x-1.5">
+              <div className="px-4 py-2 border-b border-slate-100 dark:border-[#1E293B] text-[11px] text-slate-500 dark:text-slate-400 flex items-center space-x-1.5">
                 <Shield className="w-3 h-3 text-emerald-500" />
                 <span>Session Active • OAuth 2.0 / JWT</span>
               </div>
               <div className="p-1">
                 <button
                   onClick={() => { setDropdownOpen(false); setShow2FAModal(true); }}
-                  className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-xl flex items-center justify-between space-x-2 transition-colors cursor-pointer"
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-[#162238] rounded-xl flex items-center justify-between space-x-2 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center space-x-2">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Two-Factor Authentication</span>
                   </div>
-                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${twoFactorEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${twoFactorEnabled ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
                     {twoFactorEnabled ? 'ON' : 'OFF'}
                   </span>
                 </button>
                 <button
                   onClick={() => { setDropdownOpen(false); onNavigate('settings'); }}
-                  className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-xl flex items-center space-x-2 transition-colors cursor-pointer"
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-[#162238] rounded-xl flex items-center space-x-2 transition-colors cursor-pointer"
                 >
-                  <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
+                  <Settings className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                   <span>Settings &amp; Preferences</span>
                 </button>
                 <button
                   onClick={() => { setDropdownOpen(false); logout(); }}
-                  className="w-full text-left px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-xl flex items-center space-x-2 transition-colors cursor-pointer"
+                  className="w-full text-left px-3 py-2 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl flex items-center space-x-2 transition-colors cursor-pointer"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                   <span>Sign Out</span>

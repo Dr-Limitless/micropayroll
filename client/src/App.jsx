@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { PrivacyProvider } from './context/PrivacyContext';
 import Sidebar from './components/layout/Sidebar';
 import Navbar from './components/layout/Navbar';
 import PayrollComputationView from './components/payroll/PayrollComputationView';
@@ -37,9 +38,9 @@ const moduleMeta = {
   realtime_dashboard: { label: 'Real-Time Payroll Dashboard', category: 'HR Analytics Dashboard' },
   financial_reporting: { label: 'Financial Reporting', category: 'HR Analytics Dashboard' },
   government_compliance: { label: 'Government Compliance Reports', category: 'HR Analytics Dashboard' },
+  audit_logs: { label: 'Audit Logs', category: 'HR Analytics Dashboard' },
 
-  // System Administration & Self-Service
-  audit_logs: { label: 'System Audit Logs', category: 'System Administration' },
+  // Account Preferences & Self-Service
   settings: { label: 'Account Settings & Preferences', category: 'Account Preferences' }
 };
 
@@ -53,8 +54,10 @@ function MainApp() {
     const savedTheme = localStorage.getItem('mms_theme');
     if (savedTheme === 'dark') {
       document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
     }
     const savedAccent = localStorage.getItem('mms_accent_color');
     if (savedAccent) {
@@ -133,7 +136,7 @@ function MainApp() {
   };
 
   return (
-    <div className="h-screen bg-[#F5F7FA] flex font-sans antialiased text-[#101828] overflow-hidden animate-app-enter">
+    <div className="h-screen bg-[#F5F7FA] dark:bg-[#08101E] flex font-sans antialiased text-[#101828] dark:text-[#F1F5F9] overflow-hidden animate-app-enter transition-colors duration-200">
       {/* MicroFin OS Deep Navy Sidebar with Mono Badges & Dynamic User Profile */}
       <Sidebar 
         activeModule={activeModule} 
@@ -142,7 +145,7 @@ function MainApp() {
       />
 
       {/* Main Content Area — Topbar on top, scrollable content below */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-[#F5F7FA] dark:bg-[#08101E] transition-colors duration-200">
         <Navbar 
           activeModule={activeModule}
           categoryLabel={currentMeta.category}
@@ -151,8 +154,8 @@ function MainApp() {
           taskCounts={taskCounts}
         />
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden mf-scroll p-6 sm:p-8 max-w-7xl w-full mx-auto">
-          <div key={activeModule} className="animate-module-fade">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden mf-scroll p-6 sm:p-8 w-full bg-[#F5F7FA] dark:bg-[#08101E] transition-colors duration-200">
+          <div key={activeModule} className="animate-module-fade w-full">
             {!hasModuleAccess(user?.role, activeModule) ? (
               <div className="bg-white rounded-2xl border border-red-200/80 shadow-sm p-8 sm:p-12 text-center max-w-xl mx-auto my-12 space-y-4">
                 <div className="w-16 h-16 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mx-auto border border-red-100 shadow-sm">
@@ -203,7 +206,9 @@ function MainApp() {
 export default function App() {
   return (
     <AuthProvider>
-      <MainApp />
+      <PrivacyProvider>
+        <MainApp />
+      </PrivacyProvider>
     </AuthProvider>
   );
 }
