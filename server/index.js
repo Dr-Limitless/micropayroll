@@ -38,6 +38,15 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Global process resilience guards
+process.on('uncaughtException', (err) => {
+  console.error('⚠️ Uncaught Exception:', err.message);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('⚠️ Unhandled Rejection:', reason);
+});
+
 // Start Server
 app.listen(PORT, () => {
   console.log(`🚀 MMS API Server running on http://localhost:${PORT}`);

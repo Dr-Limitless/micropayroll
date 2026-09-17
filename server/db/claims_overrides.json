@@ -3,27 +3,37 @@
     "1": {
       "status": "Approved",
       "approved_by": "Liza Gomez (HR Manager)",
-      "reimbursement_status": "Pending Reimbursement"
+      "reimbursement_status": "Pending Reimbursement",
+      "is_ppa": false,
+      "ppa_source_period": null
     },
     "2": {
       "status": "Approved",
       "approved_by": "Diana Sterling (Finance Director)",
-      "reimbursement_status": "Pending Reimbursement"
+      "reimbursement_status": "Pending Reimbursement",
+      "is_ppa": false,
+      "ppa_source_period": null
     },
     "3": {
       "status": "Approved",
       "approved_by": "Liza Gomez (HR Manager)",
-      "reimbursement_status": "Pending Reimbursement"
+      "reimbursement_status": "Pending Reimbursement",
+      "is_ppa": false,
+      "ppa_source_period": null
     },
     "4": {
       "status": "Approved",
       "approved_by": "Authorized Approver",
-      "reimbursement_status": "Pending Reimbursement"
+      "reimbursement_status": "Pending Reimbursement",
+      "is_ppa": false,
+      "ppa_source_period": null
     },
     "5": {
       "status": "Rejected",
       "approved_by": "Liza Gomez (HR Manager)",
-      "reimbursement_status": "Rejected"
+      "reimbursement_status": "Rejected",
+      "is_ppa": false,
+      "ppa_source_period": null
     },
     "6": {
       "status": "Approved",
@@ -33,5 +43,19 @@
       "ppa_source_period": "July 1–15, 2024"
     }
   },
-  "newClaims": []
+  "newClaims": [
+    {
+      "id": 7,
+      "claim_code": "CLM-2024-007",
+      "employee_id": 1,
+      "claim_type": "Travel Expense",
+      "date_filed": "2026-09-16",
+      "amount": 3500,
+      "description": "Branch inspection trip",
+      "status": "Approved",
+      "reimbursement_status": "Pending Reimbursement",
+      "payroll_period": "July 2024",
+      "approved_by": "Liza Gomez (HR Manager)"
+    }
+  ]
 }

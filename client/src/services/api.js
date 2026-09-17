@@ -21,68 +21,88 @@ export function dispatchTaskRefresh() {
   }
 }
 
-async function requestWithRefresh(url, options) {
-  const res = await fetch(url, options);
-  const data = await res.json();
-  if (!data?.error) {
-    dispatchTaskRefresh();
+async function safeJson(res) {
+  try {
+    const text = await res.text();
+    if (!text || !text.trim()) {
+      return res.ok ? { success: true } : { error: `Server returned empty response (${res.status} ${res.statusText})` };
+    }
+    return JSON.parse(text);
+  } catch (err) {
+    return { error: `Failed to parse response: ${err.message}` };
   }
-  return data;
+}
+
+async function requestWithRefresh(url, options) {
+  try {
+    const res = await fetch(url, options);
+    const data = await safeJson(res);
+    if (!data?.error) {
+      dispatchTaskRefresh();
+    }
+    return data;
+  } catch (netErr) {
+    console.warn('Network request failed:', netErr.message);
+    return { error: `Network connection failed: ${netErr.message}` };
+  }
+}
+
+async function fetchSafe(url, options = {}) {
+  try {
+    const res = await fetch(url, options);
+    return await safeJson(res);
+  } catch (err) {
+    console.warn('Request failed:', err.message);
+    return { error: `Network error: ${err.message}` };
+  }
 }
 
 export const api = {
   // Auth
   async getPersonas() {
-    const res = await fetch(`${BASE_URL}/auth/personas`);
-    return res.json();
+    return fetchSafe(`${BASE_URL}/auth/personas`);
   },
 
   async login(payload) {
-    const res = await fetch(`${BASE_URL}/auth/login`, {
+    return fetchSafe(`${BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    return res.json();
   },
 
   async verify2FALogin(payload) {
-    const res = await fetch(`${BASE_URL}/auth/login/2fa`, {
+    return fetchSafe(`${BASE_URL}/auth/login/2fa`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    return res.json();
   },
 
   async get2FAStatus() {
-    const res = await fetch(`${BASE_URL}/auth/2fa/status`, { headers: getAuthHeaders() });
-    return res.json();
+    return fetchSafe(`${BASE_URL}/auth/2fa/status`, { headers: getAuthHeaders() });
   },
 
   async setup2FA() {
-    const res = await fetch(`${BASE_URL}/auth/2fa/setup`, {
+    return fetchSafe(`${BASE_URL}/auth/2fa/setup`, {
       method: 'POST',
       headers: getAuthHeaders()
     });
-    return res.json();
   },
 
   async activate2FA(secret, totp_code) {
-    const res = await fetch(`${BASE_URL}/auth/2fa/activate`, {
+    return fetchSafe(`${BASE_URL}/auth/2fa/activate`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ secret, totp_code })
     });
-    return res.json();
   },
 
   async disable2FA() {
-    const res = await fetch(`${BASE_URL}/auth/2fa/disable`, {
+    return fetchSafe(`${BASE_URL}/auth/2fa/disable`, {
       method: 'POST',
       headers: getAuthHeaders()
     });
-    return res.json();
   },
 
   async updateProfile(data) {
@@ -133,14 +153,19 @@ export const api = {
 
   // Payroll Computation & Lifecycle
   async getPayrollPeriods() {
-    const res = await fetch(`${BASE_URL}/payroll/periods`, { headers: getAuthHeaders() });
-    return res.json();
+    return fetchSafe(`${BASE_URL}/payroll/periods`, { headers: getAuthHeaders() });
+  },
+  async createPayrollPeriod(periodData) {
+    return requestWithRefresh(`${BASE_URL}/payroll/period`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(periodData)
+    });
   },
   async getPayrollComputation(month = 'July 2024') {
-    const res = await fetch(`${BASE_URL}/payroll/computation?month=${encodeURIComponent(month)}`, {
+    return fetchSafe(`${BASE_URL}/payroll/computation?month=${encodeURIComponent(month)}`, {
       headers: getAuthHeaders()
     });
-    return res.json();
   },
   async computePayrollMonth(month = 'July 2024') {
     return requestWithRefresh(`${BASE_URL}/payroll/compute`, {

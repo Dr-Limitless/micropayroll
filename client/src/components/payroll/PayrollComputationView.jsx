@@ -17,11 +17,18 @@ import {
   Printer,
   Briefcase,
   Eye,
-  EyeOff
+  EyeOff,
+  Clock,
+  ArrowRight,
+  Lock,
+  ShieldCheck,
+  AlertTriangle,
+  CalendarPlus
 } from 'lucide-react';
 import PayslipModal from '../payslips/PayslipModal';
 import FinalPayModal from '../offboarding/FinalPayModal';
 import PayrollComputationReportModal from './PayrollComputationReportModal';
+import NewPayrollPeriodModal from './NewPayrollPeriodModal';
 import { useAuth } from '../../context/AuthContext';
 import { usePrivacy, isPrivacyActive } from '../../context/PrivacyContext';
 import { canPerformAction } from '../../utils/rbac';
@@ -60,7 +67,7 @@ function formatCurrency(val, rawVal) {
 }
 
 export default function PayrollComputationView({ searchFilter }) {
-  const { user } = useAuth();
+  const { user, switchRole } = useAuth();
   const { privacyMode, togglePrivacyMode, maskMoney } = usePrivacy();
 
   const fmtMoney = (val, rawVal, prefix = '₱') => {
@@ -103,6 +110,8 @@ export default function PayrollComputationView({ searchFilter }) {
   const [selectedOffboardEmployee, setSelectedOffboardEmployee] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showNewPeriodModal, setShowNewPeriodModal] = useState(false);
+  const [customPeriods, setCustomPeriods] = useState([]);
   const [isSubmittingEmp, setIsSubmittingEmp] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showReport, setShowReport] = useState(false);
@@ -135,12 +144,51 @@ export default function PayrollComputationView({ searchFilter }) {
       const data = await api.getPayrollComputation(monthToLoad);
       if (data.employees) setEmployees(data.employees);
       if (data.summary) setSummary(data.summary);
-      if (data.period) setPeriod(data.period);
+      if (data.period) {
+        setPeriod(data.period);
+      } else if (data.summary?.status) {
+        setPeriod(prev => ({
+          ...(prev || {}),
+          status: data.summary.status,
+          period_name: data.summary.month || monthToLoad
+        }));
+      }
     } catch (err) {
       console.error('Error loading payroll computation:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchAvailablePeriods = async () => {
+    try {
+      const res = await api.getPayrollPeriods();
+      if (Array.isArray(res)) {
+        const standardNames = [
+          'September 1–15, 2026', 'September 16–30, 2026', 'September 2026',
+          'October 1–15, 2026', 'October 16–31, 2026', 'October 2026',
+          'November 1–15, 2026', 'November 16–30, 2026', 'November 2026',
+          'December 1–15, 2026', 'December 16–31, 2026', 'December 2026',
+          'June 2024', 'July 2024', 'August 2024',
+          'July 1–15, 2024', 'July 16–31, 2024', 'August 1–15, 2024', 'August 16–31, 2024', 'September 1–15, 2024'
+        ];
+        const custom = res.filter(p => !standardNames.includes(p.period_name));
+        setCustomPeriods(custom);
+      }
+    } catch (err) {
+      console.warn('Could not fetch payroll periods:', err.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchAvailablePeriods();
+  }, []);
+
+  const handlePeriodCreated = (newPeriod) => {
+    setCustomPeriods(prev => [newPeriod, ...prev]);
+    setSelectedMonth(newPeriod.period_name);
+    showToast(`✨ Custom payroll period "${newPeriod.period_name}" created & initialized in Draft mode!`);
+    loadComputation(newPeriod.period_name);
   };
 
   useEffect(() => {
@@ -150,6 +198,14 @@ export default function PayrollComputationView({ searchFilter }) {
   const handleCompute = async () => {
     if (!canPerformAction(user?.role, 'COMPUTE_PAYROLL')) {
       showToast('⛔ Permission Denied: Only Payroll Officer or System Admin can run payroll computation.');
+      return;
+    }
+
+    // Enforce pipeline gate: period must be Approved (or past Approved) by Finance Director
+    const currentStatus = period?.status || 'Draft';
+    const approvedStatuses = ['Approved', 'Finalized', 'Paid'];
+    if (!approvedStatuses.includes(currentStatus)) {
+      showToast(`⚠️ Payroll computation requires Finance Director approval first. This period is currently "${currentStatus}". Complete: Draft → Submit For Review → Approve Payroll.`);
       return;
     }
 
@@ -368,6 +424,19 @@ export default function PayrollComputationView({ searchFilter }) {
             </button>
           )}
 
+          {/* New Custom Period Button (Payroll Officer / Admin) */}
+          {canPerformAction(user?.role, 'COMPUTE_PAYROLL') && (
+            <button
+              type="button"
+              onClick={() => setShowNewPeriodModal(true)}
+              className="px-3 py-2 rounded-lg bg-white border border-[#D0D5DD] hover:border-[#2E6BE6] hover:bg-blue-50/50 text-xs font-bold text-[#2E6BE6] transition-all flex items-center space-x-1.5 shadow-xs cursor-pointer shrink-0 whitespace-nowrap"
+              title="Create a new custom payroll period (e.g. 13th Month Pay, bonus, or custom cut-off)"
+            >
+              <CalendarPlus className="w-3.5 h-3.5 text-[#2E6BE6]" />
+              <span>+ New Period</span>
+            </button>
+          )}
+
           {/* Month / Cut-off Period Selector */}
           <div className="relative shrink-0">
             <select
@@ -375,6 +444,15 @@ export default function PayrollComputationView({ searchFilter }) {
               onChange={(e) => setSelectedMonth(e.target.value)}
               className="appearance-none bg-white border border-[#D0D5DD] hover:border-slate-400 text-xs font-semibold text-[#101828] px-3.5 py-2 pr-8 rounded-lg outline-none focus:border-[#2E6BE6] cursor-pointer shadow-xs whitespace-nowrap"
             >
+              {customPeriods.length > 0 && (
+                <optgroup label="── ✨ Custom / Ad-hoc Periods ──">
+                  {customPeriods.map(cp => (
+                    <option key={cp.period_name} value={cp.period_name}>
+                      ⭐ {cp.period_name} ({cp.cut_off_type || 'Custom'})
+                    </option>
+                  ))}
+                </optgroup>
+              )}
               <optgroup label="── 📅 Current Live Periods (2026) ──">
                 <option value="September 1–15, 2026">🟢 Sep 1–15, 2026 (1st Cut-off) ← TODAY</option>
                 <option value="September 16–30, 2026">September 16–30, 2026 (2nd Cut-off)</option>
@@ -405,144 +483,343 @@ export default function PayrollComputationView({ searchFilter }) {
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-3 pointer-events-none" />
           </div>
 
-          {/* Compute Payroll Button (Live Calculation - Officer / Admin) */}
-          <button
-            onClick={handleCompute}
-            disabled={isComputing || !canPerformAction(user?.role, 'COMPUTE_PAYROLL')}
-            title={!canPerformAction(user?.role, 'COMPUTE_PAYROLL') ? 'Requires Payroll Officer or System Administrator permission' : 'Execute live cross-module payroll computation'}
-            className={`px-4 py-2 rounded-lg font-semibold text-xs transition-all flex items-center space-x-1.5 shadow-xs shrink-0 whitespace-nowrap ${
-              canPerformAction(user?.role, 'COMPUTE_PAYROLL')
-                ? 'bg-[#2E6BE6] hover:bg-blue-700 active:bg-blue-800 text-white cursor-pointer'
-                : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-            }`}
-          >
-            <Zap className={`w-3.5 h-3.5 ${canPerformAction(user?.role, 'COMPUTE_PAYROLL') ? 'fill-white' : 'text-slate-400'} ${isComputing ? 'animate-bounce' : ''}`} />
-            <span>{isComputing ? 'Computing Live...' : 'Compute Payroll'}</span>
-          </button>
+          {/* Compute Payroll Button — Requires RBAC (officer/admin) AND Approved pipeline status */}
+          {(() => {
+            const periodStatus = period?.status || 'Draft';
+            const hasRole = canPerformAction(user?.role, 'COMPUTE_PAYROLL');
+            const approvedStatuses = ['Approved', 'Finalized', 'Paid'];
+            const isApproved = approvedStatuses.includes(periodStatus);
+            const canCompute = hasRole && isApproved && !isComputing;
+
+            const getTitle = () => {
+              if (!hasRole) return '⛔ Requires Payroll Officer or System Administrator permission';
+              if (!isApproved) return `⚠️ Period must be Approved by Finance Director first (current: "${periodStatus}"). Complete: Draft → For Review → Approve.`;
+              return '⚡ Execute live cross-module payroll computation (RBAC: Officer / Admin)';
+            };
+
+            return (
+              <button
+                onClick={handleCompute}
+                disabled={!canCompute}
+                title={getTitle()}
+                className={`px-4 py-2 rounded-lg font-semibold text-xs transition-all flex items-center space-x-1.5 shadow-xs shrink-0 whitespace-nowrap ${
+                  canCompute
+                    ? 'bg-[#2E6BE6] hover:bg-blue-700 active:bg-blue-800 text-white cursor-pointer'
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                }`}
+              >
+                <Zap className={`w-3.5 h-3.5 ${canCompute ? 'fill-white' : 'text-slate-400'} ${isComputing ? 'animate-bounce' : ''}`} />
+                <span>
+                  {isComputing ? 'Computing Live...' : !hasRole ? 'Compute Payroll' : !isApproved ? `Compute Payroll (${periodStatus})` : 'Compute Payroll'}
+                </span>
+              </button>
+            );
+          })()}
         </div>
       </div>
 
-      {/* Cross-Module Period Status & Lifecycle Bar */}
-      <div className="bg-white rounded-[14px] border border-[#E4E8F0] shadow-xs p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className={`w-3 h-3 rounded-full ${period?.is_locked ? 'bg-amber-500 animate-pulse' : period?.status === 'Paid' ? 'bg-[#15803D]' : 'bg-[#2E6BE6]'}`} />
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-bold text-[#101828]">Period Lifecycle:</span>
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                period?.status === 'Paid' ? 'bg-[#DCFCE7] text-[#15803D]' :
-                period?.status === 'Finalized' ? 'bg-[#EFF6FF] text-[#2E6BE6]' :
-                period?.status === 'Approved' ? 'bg-[#DCFCE7] text-[#15803D]' :
-                period?.status === 'For Review' ? 'bg-[#FEF3C7] text-[#B45309]' :
-                'bg-slate-100 text-slate-700'
-              }`}>
-                {period?.is_locked ? '🔒 ' : ''}{period?.status || 'Draft'}
-              </span>
-              {period?.is_semi_monthly && (
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                  period?.cut_off_type === '1st'
-                    ? 'bg-blue-50 text-blue-700 border-blue-200'
-                    : 'bg-purple-50 text-purple-700 border-purple-200'
-                }`}>
-                  {period?.cut_off_type === '1st' ? '📅 1st Cut-off — BIR Only' : '📅 2nd Cut-off — Full Statutory'}
-                </span>
-              )}
-              {period?.is_locked && (
-                <span className="text-[11px] text-[#B45309] font-semibold bg-[#FEF3C7] px-2 py-0.5 rounded border border-amber-200">
-                  Locked &amp; Claims Reimbursed
-                </span>
+      {/* Interactive 5-Stage Workflow Stepper & Governance Guidance */}
+      {(() => {
+        const currentLifecycle = period?.status || 'Draft';
+        const lifecycleOrder = ['Draft', 'For Review', 'Approved', 'Finalized', 'Paid'];
+        const currentIdx = lifecycleOrder.indexOf(currentLifecycle);
+
+        const steps = [
+          { key: 'Draft', number: 1, title: 'Draft Preparation', role: 'Payroll Officer', desc: 'Wages & deductions computed' },
+          { key: 'For Review', number: 2, title: 'Executive Review', role: 'Finance Director', desc: 'Queued for audit & sign-off' },
+          { key: 'Approved', number: 3, title: 'Finance Approval', role: 'Finance Director', desc: 'Approved for finalization' },
+          { key: 'Finalized', number: 4, title: 'Finalized & Locked', role: 'Finance Director', desc: 'Tamper-proof lock & claims' },
+          { key: 'Paid', number: 5, title: 'Disbursed / Paid', role: 'Finance Director', desc: 'Payout released & rollover' }
+        ];
+
+        return (
+          <div className="bg-white rounded-[14px] border border-[#E4E8F0] shadow-xs p-5 space-y-4">
+            {/* Header & Cut-Off Details */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-2.5 h-2.5 rounded-full ${period?.is_locked ? 'bg-amber-500 animate-pulse' : currentLifecycle === 'Paid' ? 'bg-[#15803D]' : 'bg-[#2E6BE6]'}`} />
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                      Payroll Lifecycle &amp; Approval Pipeline
+                    </span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                      currentLifecycle === 'Paid' ? 'bg-[#DCFCE7] text-[#15803D]' :
+                      currentLifecycle === 'Finalized' ? 'bg-[#EFF6FF] text-[#2E6BE6]' :
+                      currentLifecycle === 'Approved' ? 'bg-[#DCFCE7] text-[#15803D]' :
+                      currentLifecycle === 'For Review' ? 'bg-[#FEF3C7] text-[#B45309]' :
+                      'bg-slate-100 text-slate-700'
+                    }`}>
+                      {period?.is_locked ? '🔒 ' : ''}Stage {currentIdx + 1} of 5: {currentLifecycle}
+                    </span>
+                    {period?.is_semi_monthly && (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                        period?.cut_off_type === '1st'
+                          ? 'bg-blue-50 text-blue-700 border-blue-200'
+                          : 'bg-purple-50 text-purple-700 border-purple-200'
+                      }`}>
+                        {period?.cut_off_type === '1st' ? '📅 1st Cut-off — BIR Only' : '📅 2nd Cut-off — Full Statutory'}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-[#64748B] mt-0.5">
+                    Cut-off: <strong>{period?.cut_off_start || period?.start_date || '2026-09-01'} to {period?.cut_off_end || period?.end_date || '2026-09-15'}</strong> • Payout: <strong>{period?.payout_date || 'September 15, 2026'}</strong>
+                  </p>
+                </div>
+              </div>
+
+              {/* Reset to Draft for demo testing */}
+              {['admin', 'director'].includes(user?.role) && currentLifecycle !== 'Draft' && (
+                <button
+                  type="button"
+                  onClick={() => handlePeriodStatusChange('Draft')}
+                  disabled={isUpdatingPeriod}
+                  title="Reset to Draft (Unlocks historical editing for testing)"
+                  className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs transition-colors cursor-pointer self-start sm:self-auto shrink-0"
+                >
+                  ↺ Reset to Draft (Demo)
+                </button>
               )}
             </div>
-            <p className="text-[11px] text-[#64748B] mt-0.5">
-              Cut-off: {period?.start_date || '2024-07-01'} to {period?.end_date || '2024-07-31'} • Payout: {period?.payout_date || 'July 25, 2024'}
-              {period?.is_semi_monthly && (
-                <span className="ml-2 text-slate-500 font-medium">
-                  {period?.cut_off_type === '1st'
-                    ? '• SSS/PhilHealth/Pag-IBIG deferred to 2nd cut-off'
-                    : '• Full statutory deductions applied this cut-off'}
-                </span>
-              )}
-            </p>
+
+            {/* Visual 5-Stage Progression Track */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+              {steps.map((s, idx) => {
+                const isCompleted = currentLifecycle === 'Paid' ? true : idx < currentIdx;
+                const isActive = currentLifecycle === 'Paid' ? false : idx === currentIdx;
+
+                return (
+                  <div
+                    key={s.key}
+                    className={`p-3 rounded-xl border transition-all relative flex flex-col justify-between ${
+                      isActive
+                        ? 'bg-blue-50/70 border-[#2E6BE6] ring-1 ring-[#2E6BE6]/30 shadow-xs'
+                        : isCompleted
+                        ? 'bg-emerald-50/50 border-emerald-200 text-slate-700'
+                        : 'bg-slate-50/60 border-slate-200/80 text-slate-400'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1 mb-1.5">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                        isActive
+                          ? 'bg-[#2E6BE6] text-white'
+                          : isCompleted
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-slate-200 text-slate-600'
+                      }`}>
+                        Stage {s.number}
+                      </span>
+                      {isCompleted ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      ) : isActive ? (
+                        <span className="flex h-2.5 w-2.5 relative shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#2E6BE6]"></span>
+                        </span>
+                      ) : (
+                        <span className="w-3.5 h-3.5 rounded-full border border-slate-300 shrink-0" />
+                      )}
+                    </div>
+                    <div className="space-y-0.5">
+                      <div className={`text-xs font-bold leading-tight ${isActive ? 'text-[#2E6BE6]' : isCompleted ? 'text-slate-900' : 'text-slate-500'}`}>
+                        {s.title}
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-medium">
+                        Auth: <span className={isActive ? 'font-semibold text-slate-800' : ''}>{s.role}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Contextual Governance Guidance & Next Action Banner */}
+            {currentLifecycle === 'Draft' && (
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-2.5">
+                  <FileText className="w-4 h-4 text-[#2E6BE6] mt-0.5 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-slate-900">Current Stage: Preparation &amp; Computation</div>
+                    <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                      Payroll Officer verifies gross wages, overtime, and statutory deductions. When ready, click <strong>"Submit For Review"</strong> to send this batch to the Finance Director.
+                    </p>
+                  </div>
+                </div>
+                {canPerformAction(user?.role, 'SUBMIT_FOR_REVIEW') ? (
+                  <button
+                    type="button"
+                    onClick={() => handlePeriodStatusChange('For Review')}
+                    disabled={isUpdatingPeriod}
+                    title="Submit draft for Finance Director approval"
+                    className="px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 shadow-sm shrink-0 bg-[#B45309] hover:bg-amber-800 text-white cursor-pointer active:scale-[0.98]"
+                  >
+                    <span>Submit For Review</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => switchRole('officer')}
+                      className="px-3.5 py-2 rounded-lg bg-[#2E6BE6] hover:bg-blue-700 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
+                      title="Switch to Carlos Reyes (Payroll Officer) to submit this batch"
+                    >
+                      <span>Switch to Payroll Officer</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {currentLifecycle === 'For Review' && (
+              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-2.5">
+                  <Clock className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                      <span>Waiting for Executive Audit by Finance Director</span>
+                      <span className="text-[10px] bg-amber-200/70 text-amber-900 font-bold px-1.5 py-0.2 rounded">Separation of Duties</span>
+                    </div>
+                    <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                      The payroll batch has been submitted and is currently in the <strong>Finance Director's approval queue</strong>. Under financial governance, the preparer cannot sign off on their own calculations.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  {canPerformAction(user?.role, 'APPROVE_PAYROLL') ? (
+                    <button
+                      type="button"
+                      onClick={() => handlePeriodStatusChange('Approved')}
+                      disabled={isUpdatingPeriod}
+                      className="px-4 py-2 rounded-lg bg-[#2E6BE6] hover:bg-blue-700 text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-[0.98]"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Approve Payroll Batch</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => switchRole('director')}
+                      className="px-3.5 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
+                      title="Switch to Diana Sterling (Finance Director) to test the approval stage"
+                    >
+                      <span>Switch to Finance Director</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {currentLifecycle === 'Approved' && (
+              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-emerald-950">Approved by Finance Director • Ready for Final Lock</div>
+                    <p className="text-[11px] text-emerald-800 mt-0.5 leading-relaxed">
+                      Payroll calculations are verified. Click <strong>"Finalize &amp; Lock Period"</strong> to freeze all deductions, lock the period against changes, and mark approved employee claims as reimbursed.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {canPerformAction(user?.role, 'FINALIZE_AND_LOCK') ? (
+                    <button
+                      type="button"
+                      onClick={() => handlePeriodStatusChange('Finalized')}
+                      disabled={isUpdatingPeriod}
+                      className="px-4 py-2 rounded-lg bg-[#2E6BE6] hover:bg-blue-700 text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-[0.98]"
+                    >
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>Finalize &amp; Lock Period</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => switchRole('director')}
+                      className="px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>Switch to Finance Director</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {currentLifecycle === 'Finalized' && (
+              <div className="p-4 rounded-xl bg-blue-50 border border-blue-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-2.5">
+                  <Lock className="w-4 h-4 text-[#2E6BE6] mt-0.5 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-blue-950">Period Finalized &amp; Locked • Ready for Disbursement</div>
+                    <p className="text-[11px] text-blue-800 mt-0.5 leading-relaxed">
+                      Records are tamper-proof and immutable. Approved expense claims and loan amortization deductions are stamped. Click <strong>"Disburse / Mark as Paid"</strong> to release payouts and roll over to the next pay cycle.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {canPerformAction(user?.role, 'DISBURSE_PAYROLL') ? (
+                    <button
+                      type="button"
+                      onClick={() => handlePeriodStatusChange('Paid')}
+                      disabled={isUpdatingPeriod}
+                      className="px-4 py-2 rounded-lg bg-[#15803D] hover:bg-emerald-700 text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-[0.98]"
+                    >
+                      <Wallet className="w-3.5 h-3.5" />
+                      <span>Disburse / Mark as Paid</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => switchRole('director')}
+                      className="px-3.5 py-2 rounded-lg bg-[#2E6BE6] hover:bg-blue-700 text-white font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>Switch to Finance Director</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {currentLifecycle === 'Paid' && (
+              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-emerald-950">Payout Successfully Disbursed &amp; Completed</div>
+                    <p className="text-[11px] text-emerald-800 mt-0.5 leading-relaxed">
+                      Direct deposit advice generated. All employee payslips are released. Automated cut-off rollover to the next cycle has been queued.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = (selectedMonth === 'September 1–15, 2026' || period?.cut_off_type === '1st')
+                        ? 'September 16–30, 2026'
+                        : 'October 1–15, 2026';
+                      setSelectedMonth(next);
+                    }}
+                    className="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
+                    title="Navigate to the newly rolled-over draft pay cycle"
+                  >
+                    <span>View Next Pay Cycle ({selectedMonth === 'September 1–15, 2026' ? 'Sep 16–30, 2026' : 'Next Cycle'})</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-
-        {/* Lifecycle Progression Action Buttons with RBAC Gates */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {(!period || period?.status === 'Draft') && (
-            <button
-              onClick={() => handlePeriodStatusChange('For Review')}
-              disabled={isUpdatingPeriod || !canPerformAction(user?.role, 'SUBMIT_FOR_REVIEW')}
-              title={!canPerformAction(user?.role, 'SUBMIT_FOR_REVIEW') ? 'Restricted to Payroll Officer or System Admin' : 'Submit draft for Finance Director approval'}
-              className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-colors flex items-center gap-1 shadow-xs ${
-                canPerformAction(user?.role, 'SUBMIT_FOR_REVIEW')
-                  ? 'bg-[#B45309] hover:bg-amber-700 text-white cursor-pointer'
-                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-              }`}
-            >
-              <span>Submit For Review</span>
-            </button>
-          )}
-
-          {period?.status === 'For Review' && (
-            <button
-              onClick={() => handlePeriodStatusChange('Approved')}
-              disabled={isUpdatingPeriod || !canPerformAction(user?.role, 'APPROVE_PAYROLL')}
-              title={!canPerformAction(user?.role, 'APPROVE_PAYROLL') ? 'Restricted to Finance Director or System Admin' : 'Approve payroll figures for lock and disbursement'}
-              className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-colors flex items-center gap-1 shadow-xs ${
-                canPerformAction(user?.role, 'APPROVE_PAYROLL')
-                  ? 'bg-[#2E6BE6] hover:bg-blue-700 text-white cursor-pointer'
-                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-              }`}
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Approve Payroll</span>
-            </button>
-          )}
-
-          {period?.status === 'Approved' && (
-            <button
-              onClick={() => handlePeriodStatusChange('Finalized')}
-              disabled={isUpdatingPeriod || !canPerformAction(user?.role, 'FINALIZE_AND_LOCK')}
-              title={!canPerformAction(user?.role, 'FINALIZE_AND_LOCK') ? 'Restricted to Finance Director or System Admin' : 'Finalize period, lock from editing, and reimburse approved claims'}
-              className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-colors flex items-center gap-1 shadow-xs ${
-                canPerformAction(user?.role, 'FINALIZE_AND_LOCK')
-                  ? 'bg-[#2E6BE6] hover:bg-blue-700 text-white cursor-pointer'
-                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-              }`}
-            >
-              <span>Finalize &amp; Lock Period</span>
-            </button>
-          )}
-
-          {period?.status === 'Finalized' && (
-            <button
-              onClick={() => handlePeriodStatusChange('Paid')}
-              disabled={isUpdatingPeriod || !canPerformAction(user?.role, 'DISBURSE_PAYROLL')}
-              title={!canPerformAction(user?.role, 'DISBURSE_PAYROLL') ? 'Restricted to Finance Director or System Admin' : 'Mark direct deposit as completed and paid'}
-              className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-colors flex items-center gap-1 shadow-xs ${
-                canPerformAction(user?.role, 'DISBURSE_PAYROLL')
-                  ? 'bg-[#15803D] hover:bg-emerald-700 text-white cursor-pointer'
-                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-              }`}
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Disburse / Mark as Paid</span>
-            </button>
-          )}
-
-          {/* Reset button for testing and demonstration */}
-          {(period?.status === 'Finalized' || period?.status === 'Paid' || period?.status === 'Approved') && ['admin', 'director'].includes(user?.role) && (
-            <button
-              onClick={() => handlePeriodStatusChange('Draft')}
-              disabled={isUpdatingPeriod}
-              title="Reset to Draft (Unlocks historical editing for testing)"
-              className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs transition-colors cursor-pointer"
-            >
-              Reset to Draft
-            </button>
-          )}
-        </div>
-      </div>
+        );
+      })()}
 
       {/* 4 Summary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1226,6 +1503,13 @@ export default function PayrollComputationView({ searchFilter }) {
           onClose={() => setShowReport(false)}
         />
       )}
+
+      {/* New Custom Payroll Period Modal */}
+      <NewPayrollPeriodModal
+        isOpen={showNewPeriodModal}
+        onClose={() => setShowNewPeriodModal(false)}
+        onSuccess={handlePeriodCreated}
+      />
     </div>
   );
 }

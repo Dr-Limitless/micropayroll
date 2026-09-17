@@ -153,6 +153,10 @@ CREATE TABLE IF NOT EXISTS payroll_periods (
     total_net NUMERIC(15, 2) DEFAULT 0.00,
     approved_by VARCHAR(255),
     finalized_at TIMESTAMP WITH TIME ZONE,
+    disbursed_at TIMESTAMP WITH TIME ZONE,
+    is_locked BOOLEAN DEFAULT FALSE,
+    is_semi_monthly BOOLEAN DEFAULT FALSE,
+    cut_off_type VARCHAR(20) DEFAULT '1st',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -214,3 +218,33 @@ CREATE INDEX IF NOT EXISTS idx_attendance_emp ON attendance_records(employee_id)
 CREATE INDEX IF NOT EXISTS idx_claims_emp ON claims(employee_id);
 CREATE INDEX IF NOT EXISTS idx_hmo_emp ON hmo_enrollments(employee_id);
 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);
+
+-- Automated column migrations for existing instances
+ALTER TABLE claims ADD COLUMN IF NOT EXISTS payroll_period VARCHAR(100);
+ALTER TABLE claims ADD COLUMN IF NOT EXISTS is_ppa BOOLEAN DEFAULT FALSE;
+ALTER TABLE claims ADD COLUMN IF NOT EXISTS ppa_source_period VARCHAR(100);
+
+ALTER TABLE attendance_records ADD COLUMN IF NOT EXISTS day_type VARCHAR(50) DEFAULT 'Regular Day';
+ALTER TABLE attendance_records ADD COLUMN IF NOT EXISTS night_diff_hours NUMERIC(4, 2) DEFAULT 0.00;
+ALTER TABLE attendance_records ADD COLUMN IF NOT EXISTS is_ppa BOOLEAN DEFAULT FALSE;
+ALTER TABLE attendance_records ADD COLUMN IF NOT EXISTS ppa_source_period VARCHAR(100);
+
+ALTER TABLE microloans ADD COLUMN IF NOT EXISTS loan_code VARCHAR(50);
+ALTER TABLE microloans ADD COLUMN IF NOT EXISTS disbursed_date DATE;
+
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS base_salary NUMERIC(12, 2);
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS base_ot_pay NUMERIC(12, 2) DEFAULT 0.00;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS sss_number VARCHAR(50);
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS philhealth_number VARCHAR(50);
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS pagibig_number VARCHAR(50);
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS address TEXT;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS zip_code VARCHAR(20);
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS leave_credits JSONB;
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_secret VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role_label VARCHAR(100);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_color VARCHAR(100);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS initials VARCHAR(10);
+

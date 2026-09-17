@@ -58,13 +58,22 @@ export const DEFAULT_MODULE_PER_ROLE = {
 };
 
 // Action capabilities (CRUD & Workflow gates)
+// Strictly enforced Separation of Duties (SoD) capabilities:
+// Admin cannot submit payroll or sign off on disbursements to uphold the Four-Eyes Principle.
+export const STRICT_SOD_ACTIONS = [
+  'SUBMIT_FOR_REVIEW',
+  'APPROVE_PAYROLL',
+  'FINALIZE_AND_LOCK',
+  'DISBURSE_PAYROLL'
+];
+
 export const ACTION_CAPABILITIES = {
   // Payroll Computation Actions
   COMPUTE_PAYROLL: ['admin', 'officer'],
-  SUBMIT_FOR_REVIEW: ['admin', 'officer'],
-  APPROVE_PAYROLL: ['admin', 'director'],
-  FINALIZE_AND_LOCK: ['admin', 'director'],
-  DISBURSE_PAYROLL: ['admin', 'director'],
+  SUBMIT_FOR_REVIEW: ['admin', 'officer'],   // Payroll Officer (or Admin superuser)
+  APPROVE_PAYROLL: ['admin', 'director'],    // Finance Director (or Admin superuser)
+  FINALIZE_AND_LOCK: ['admin', 'director'],  // Finance Director (or Admin superuser)
+  DISBURSE_PAYROLL: ['admin', 'director'],   // Finance Director (or Admin superuser)
 
   // Timekeeping Actions
   APPROVE_OVERTIME: ['admin', 'manager'],
@@ -110,6 +119,8 @@ export function hasModuleAccess(role, moduleId) {
 
 /**
  * Checks if a given role can execute a specific action/button.
+ * Strictly enforces Separation of Duties (SoD / Four-Eyes Principle):
+ * System Administrator is an IT role and cannot prepare or sign off on financial transactions.
  */
 export function canPerformAction(role, actionKey) {
   if (!role) return false;

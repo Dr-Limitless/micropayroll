@@ -1588,7 +1588,7 @@ function syncPeriodComputation(periodName = 'July 2024', force = false) {
 
   // Preserve frozen snapshot if period is locked and not forced
   if (period.is_locked && period.items && period.items.length > 0 && !force) {
-    return { summary: period.summary, employees: period.items };
+    return { summary: period.summary, employees: period.items, period };
   }
   
   const items = masterEmployees.map(emp => computeEmployeePayrollItem(emp, periodName));
@@ -1631,7 +1631,10 @@ function syncPeriodComputation(periodName = 'July 2024', force = false) {
     processed_percentage: '100% complete'
   };
 
-  return { summary: period.summary, employees: items };
+  if (!period.start_date) period.start_date = period.cut_off_start;
+  if (!period.end_date) period.end_date = period.cut_off_end;
+
+  return { summary: period.summary, employees: items, period };
 }
 
 // Sequence resolver for automated cut-off rollover
@@ -1920,7 +1923,358 @@ syncPeriodComputation('December 1–15, 2026');
 syncPeriodComputation('December 16–31, 2026');
 syncPeriodComputation('December 2026');
 
-// Connect to DB pool and auto-execute schema if connected
+// Connect to DB pool and auto-execute schema & hydration if connected
+async function seedAndHydratePostgres(client) {
+  try {
+    // 1. Users
+    const userCheck = await client.query('SELECT COUNT(*) FROM users');
+    if (parseInt(userCheck.rows[0].count, 10) === 0) {
+      for (const u of initialUsers) {
+        await client.query(
+          `INSERT INTO users (id, email, password_hash, full_name, role, role_label, avatar_color, description, two_factor_enabled, two_factor_secret, initials)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+           ON CONFLICT (id) DO NOTHING`,
+          [u.id, u.email, u.password_hash, u.full_name, u.role, u.role_label, u.avatar_color, u.description, u.two_factor_enabled || false, u.two_factor_secret || null, u.initials]
+        );
+      }
+      await client.query(`SELECT setval(pg_get_serial_sequence('users', 'id'), COALESCE((SELECT MAX(id) FROM users), 1))`);
+    }
+
+    // 2. Employees Master
+    const empCheck = await client.query('SELECT COUNT(*) FROM employees');
+    if (parseInt(empCheck.rows[0].count, 10) === 0) {
+      for (const e of masterEmployees) {
+        await client.query(
+          `INSERT INTO employees (
+            id, employee_code, first_name, last_name, email, phone, department, position,
+            employment_type, hire_date, status, encrypted_salary, encrypted_bank_account,
+            encrypted_tin, bank_name, base_salary, base_ot_pay, sss_number, philhealth_number,
+            pagibig_number, address, zip_code, leave_credits
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+          ON CONFLICT (id) DO NOTHING`,
+          [
+            e.id, e.employee_code, e.first_name, e.last_name, e.email, e.phone, e.department, e.position,
+            e.employment_type, e.hire_date, e.status, encryptAES256(String(e.base_salary)), e.encrypted_bank_account,
+            e.encrypted_tin, e.bank_name, e.base_salary, e.base_ot_pay || 0, e.sss_number, e.philhealth_number,
+            e.pagibig_number, e.address, e.zip_code, JSON.stringify(e.leave_credits)
+          ]
+        );
+      }
+      await client.query(`SELECT setval(pg_get_serial_sequence('employees', 'id'), COALESCE((SELECT MAX(id) FROM employees), 1))`);
+    } else {
+      const empRows = await client.query('SELECT * FROM employees ORDER BY id ASC');
+      masterEmployees = empRows.rows.map(r => ({
+        id: r.id,
+        employee_code: r.employee_code,
+        first_name: r.first_name,
+        last_name: r.last_name,
+        initials: `${(r.first_name || 'E')[0]}${(r.last_name || 'M')[0]}`.toUpperCase(),
+        email: r.email,
+        phone: r.phone,
+        department: r.department,
+        position: r.position,
+        employment_type: r.employment_type,
+        hire_date: r.hire_date ? new Date(r.hire_date).toISOString().split('T')[0] : '2023-01-01',
+        status: r.status,
+        base_salary: Number(r.base_salary || 50000),
+        base_ot_pay: Number(r.base_ot_pay || 0),
+        bank_name: r.bank_name,
+        bank_account: decryptAES256(r.encrypted_bank_account) || '0000-0000',
+        encrypted_bank_account: r.encrypted_bank_account,
+        tin: decryptAES256(r.encrypted_tin) || '000-000',
+        encrypted_tin: r.encrypted_tin,
+        sss_number: r.sss_number,
+        philhealth_number: r.philhealth_number,
+        pagibig_number: r.pagibig_number,
+        address: r.address,
+        zip_code: r.zip_code,
+        leave_credits: typeof r.leave_credits === 'string' ? JSON.parse(r.leave_credits) : (r.leave_credits || { vacation_leave: 12, sick_leave: 8, unused_leaves: 10 })
+      }));
+    }
+
+    // 3. Allowances
+    const allowCheck = await client.query('SELECT COUNT(*) FROM allowances');
+    if (parseInt(allowCheck.rows[0].count, 10) === 0) {
+      for (const a of allowanceTypes) {
+        await client.query(
+          `INSERT INTO allowances (id, name, type, amount, frequency, status)
+           VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING`,
+          [a.id, a.name, a.type, a.default_amount, a.frequency, a.status]
+        );
+      }
+      await client.query(`SELECT setval(pg_get_serial_sequence('allowances', 'id'), COALESCE((SELECT MAX(id) FROM allowances), 1))`);
+    }
+
+    const empAllowCheck = await client.query('SELECT COUNT(*) FROM employee_allowances');
+    if (parseInt(empAllowCheck.rows[0].count, 10) === 0) {
+      for (const ea of employeeAllowances) {
+        await client.query(
+          `INSERT INTO employee_allowances (id, employee_id, allowance_id, custom_amount, status)
+           VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO NOTHING`,
+          [ea.id, ea.employee_id, ea.allowance_id, ea.custom_amount, ea.status]
+        );
+      }
+      await client.query(`SELECT setval(pg_get_serial_sequence('employee_allowances', 'id'), COALESCE((SELECT MAX(id) FROM employee_allowances), 1))`);
+    } else {
+      const eaRows = await client.query('SELECT * FROM employee_allowances ORDER BY id ASC');
+      employeeAllowances = eaRows.rows.map(r => ({
+        id: r.id,
+        employee_id: r.employee_id,
+        allowance_id: r.allowance_id,
+        custom_amount: Number(r.custom_amount),
+        status: r.status
+      }));
+    }
+
+    // 4. Benefit Plans & HMO Enrollments
+    const planCheck = await client.query('SELECT COUNT(*) FROM benefit_plans');
+    if (parseInt(planCheck.rows[0].count, 10) === 0) {
+      for (const bp of benefitPlans) {
+        await client.query(
+          `INSERT INTO benefit_plans (id, name, plan_tier, provider, coverage_amount, default_monthly_premium, employer_share, employee_share, status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (id) DO NOTHING`,
+          [bp.id, bp.name, bp.plan_tier, bp.provider, bp.coverage_amount, bp.default_monthly_premium, bp.employer_share, bp.employee_share, bp.status]
+        );
+      }
+      await client.query(`SELECT setval(pg_get_serial_sequence('benefit_plans', 'id'), COALESCE((SELECT MAX(id) FROM benefit_plans), 1))`);
+    }
+
+    const hmoCheck = await client.query('SELECT COUNT(*) FROM hmo_enrollments');
+    if (parseInt(hmoCheck.rows[0].count, 10) === 0) {
+      for (const h of hmoEnrollments) {
+        await client.query(
+          `INSERT INTO hmo_enrollments (id, employee_id, plan_id, dependents_count, monthly_premium, employer_share, employee_share, effective_date, expiration_date, status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT (id) DO NOTHING`,
+          [h.id, h.employee_id, h.plan_id, h.dependents_count, h.monthly_premium, h.employer_share, h.employee_share, h.effective_date, h.expiration_date, h.status]
+        );
+      }
+      await client.query(`SELECT setval(pg_get_serial_sequence('hmo_enrollments', 'id'), COALESCE((SELECT MAX(id) FROM hmo_enrollments), 1))`);
+    } else {
+      const hmoRows = await client.query('SELECT * FROM hmo_enrollments ORDER BY id ASC');
+      hmoEnrollments = hmoRows.rows.map(r => ({
+        id: r.id,
+        employee_id: r.employee_id,
+        plan_id: r.plan_id,
+        dependents_count: r.dependents_count,
+        monthly_premium: Number(r.monthly_premium),
+        employer_share: Number(r.employer_share),
+        employee_share: Number(r.employee_share),
+        effective_date: r.effective_date ? new Date(r.effective_date).toISOString().split('T')[0] : '2023-01-01',
+        expiration_date: r.expiration_date ? new Date(r.expiration_date).toISOString().split('T')[0] : '2025-12-31',
+        status: r.status
+      }));
+    }
+
+    // 5. Claims
+    const claimCheck = await client.query('SELECT COUNT(*) FROM claims');
+    if (parseInt(claimCheck.rows[0].count, 10) === 0) {
+      for (const c of claimsList) {
+        await client.query(
+          `INSERT INTO claims (id, claim_code, employee_id, claim_type, date_filed, amount, description, status, reimbursement_status, payroll_period, approved_by, is_ppa, ppa_source_period)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) ON CONFLICT (id) DO NOTHING`,
+          [c.id, c.claim_code, c.employee_id, c.claim_type, c.date_filed, c.amount, c.description, c.status, c.reimbursement_status, c.payroll_period, c.approved_by, c.is_ppa || false, c.ppa_source_period || null]
+        );
+      }
+      await client.query(`SELECT setval(pg_get_serial_sequence('claims', 'id'), COALESCE((SELECT MAX(id) FROM claims), 1))`);
+    } else {
+      const claimRows = await client.query('SELECT * FROM claims ORDER BY id ASC');
+      claimsList = claimRows.rows.map(r => ({
+        id: r.id,
+        claim_code: r.claim_code,
+        employee_id: r.employee_id,
+        claim_type: r.claim_type,
+        date_filed: r.date_filed ? new Date(r.date_filed).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        amount: Number(r.amount),
+        description: r.description,
+        status: r.status,
+        reimbursement_status: r.reimbursement_status,
+        payroll_period: r.payroll_period || 'July 2024',
+        approved_by: r.approved_by,
+        is_ppa: r.is_ppa,
+        ppa_source_period: r.ppa_source_period
+      }));
+    }
+
+    // 6. Microloans
+    const loanCheck = await client.query('SELECT COUNT(*) FROM microloans');
+    if (parseInt(loanCheck.rows[0].count, 10) === 0) {
+      for (const l of microloans) {
+        await client.query(
+          `INSERT INTO microloans (id, loan_code, employee_id, loan_type, principal_amount, monthly_deduction, total_installments, remaining_installments, balance_amount, interest_rate, status, reason, approved_by, disbursed_date)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) ON CONFLICT (id) DO NOTHING`,
+          [l.id, l.loan_code, l.employee_id, l.loan_type, l.principal_amount, l.monthly_deduction, l.total_installments, l.remaining_installments, l.balance_amount, l.interest_rate, l.status, l.reason, l.approved_by, l.disbursed_date]
+        );
+      }
+      await client.query(`SELECT setval(pg_get_serial_sequence('microloans', 'id'), COALESCE((SELECT MAX(id) FROM microloans), 1))`);
+    } else {
+      const loanRows = await client.query('SELECT * FROM microloans ORDER BY id ASC');
+      microloans = loanRows.rows.map(r => ({
+        id: r.id,
+        loan_code: r.loan_code,
+        employee_id: r.employee_id,
+        loan_type: r.loan_type,
+        principal_amount: Number(r.principal_amount),
+        monthly_deduction: Number(r.monthly_deduction),
+        total_installments: r.total_installments,
+        remaining_installments: r.remaining_installments,
+        balance_amount: Number(r.balance_amount),
+        interest_rate: Number(r.interest_rate),
+        status: r.status,
+        reason: r.reason,
+        approved_by: r.approved_by,
+        disbursed_date: r.disbursed_date ? new Date(r.disbursed_date).toISOString().split('T')[0] : null
+      }));
+    }
+
+    // 7. Salary Structures & Salary Adjustments
+    const bandCheck = await client.query('SELECT COUNT(*) FROM salary_structures');
+    if (parseInt(bandCheck.rows[0].count, 10) === 0) {
+      for (const sb of salaryBands) {
+        await client.query(
+          `INSERT INTO salary_structures (grade, title, min_salary, max_salary, base_salary, status)
+           VALUES ($1, $2, $3, $4, $5, 'Active')`,
+          [sb.grade, sb.title, sb.min_salary, sb.max_salary, sb.base_salary]
+        );
+      }
+    }
+
+    const adjCheck = await client.query('SELECT COUNT(*) FROM salary_adjustments');
+    if (parseInt(adjCheck.rows[0].count, 10) === 0) {
+      for (const a of salaryAdjustments) {
+        await client.query(
+          `INSERT INTO salary_adjustments (id, employee_id, current_salary, proposed_salary, adjustment_amount, adjustment_percentage, reason, effective_date, requested_by, approved_by, status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) ON CONFLICT (id) DO NOTHING`,
+          [a.id, a.employee_id, a.current_salary, a.proposed_salary, a.adjustment_amount, a.adjustment_percentage, a.reason, a.effective_date, a.requested_by, a.approved_by, a.status]
+        );
+      }
+      await client.query(`SELECT setval(pg_get_serial_sequence('salary_adjustments', 'id'), COALESCE((SELECT MAX(id) FROM salary_adjustments), 1))`);
+    } else {
+      const adjRows = await client.query('SELECT * FROM salary_adjustments ORDER BY id ASC');
+      salaryAdjustments = adjRows.rows.map(r => ({
+        id: r.id,
+        employee_id: r.employee_id,
+        current_salary: Number(r.current_salary),
+        proposed_salary: Number(r.proposed_salary),
+        adjustment_amount: Number(r.adjustment_amount),
+        adjustment_percentage: Number(r.adjustment_percentage),
+        reason: r.reason,
+        effective_date: r.effective_date ? new Date(r.effective_date).toISOString().split('T')[0] : '2024-08-01',
+        requested_by: r.requested_by,
+        approved_by: r.approved_by,
+        status: r.status
+      }));
+    }
+
+    // 8. Attendance Records
+    const attCheck = await client.query('SELECT COUNT(*) FROM attendance_records');
+    if (parseInt(attCheck.rows[0].count, 10) === 0) {
+      for (const att of attendanceRecords) {
+        await client.query(
+          `INSERT INTO attendance_records (id, employee_id, date, day_type, time_in, time_out, regular_hours, overtime_hours, night_diff_hours, late_minutes, undertime_minutes, attendance_status, approval_status, approved_by, is_ppa, ppa_source_period)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) ON CONFLICT (id) DO NOTHING`,
+          [att.id, att.employee_id, att.date, att.day_type || 'Regular Day', att.time_in, att.time_out, att.regular_hours, att.overtime_hours, att.night_diff_hours || 0, att.late_minutes || 0, att.undertime_minutes || 0, att.attendance_status, att.approval_status, att.approved_by, att.is_ppa || false, att.ppa_source_period || null]
+        );
+      }
+      await client.query(`SELECT setval(pg_get_serial_sequence('attendance_records', 'id'), COALESCE((SELECT MAX(id) FROM attendance_records), 1))`);
+    } else {
+      const attRows = await client.query('SELECT * FROM attendance_records ORDER BY id ASC');
+      attendanceRecords = attRows.rows.map(r => ({
+        id: r.id,
+        employee_id: r.employee_id,
+        date: r.date ? new Date(r.date).toISOString().split('T')[0] : '2024-07-01',
+        day_type: r.day_type || 'Regular Day',
+        time_in: r.time_in,
+        time_out: r.time_out,
+        regular_hours: Number(r.regular_hours),
+        overtime_hours: Number(r.overtime_hours),
+        night_diff_hours: Number(r.night_diff_hours || 0),
+        late_minutes: Number(r.late_minutes || 0),
+        undertime_minutes: Number(r.undertime_minutes || 0),
+        attendance_status: r.attendance_status,
+        approval_status: r.approval_status,
+        approved_by: r.approved_by,
+        is_ppa: r.is_ppa,
+        ppa_source_period: r.ppa_source_period
+      }));
+    }
+
+    // 12. Payroll Periods (Ensure columns & hydration across server restarts)
+    await client.query(`
+      ALTER TABLE payroll_periods ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT FALSE;
+      ALTER TABLE payroll_periods ADD COLUMN IF NOT EXISTS is_semi_monthly BOOLEAN DEFAULT FALSE;
+      ALTER TABLE payroll_periods ADD COLUMN IF NOT EXISTS cut_off_type VARCHAR(20) DEFAULT '1st';
+      ALTER TABLE payroll_periods ADD COLUMN IF NOT EXISTS disbursed_at TIMESTAMP WITH TIME ZONE;
+    `);
+
+    const periodCheck = await client.query('SELECT COUNT(*) FROM payroll_periods');
+    if (parseInt(periodCheck.rows[0].count, 10) === 0) {
+      for (const [key, p] of Object.entries(payrollPeriods)) {
+        await client.query(
+          `INSERT INTO payroll_periods (
+            period_name, cut_off_start, cut_off_end, payout_date, status,
+            total_gross, total_deductions, total_net, approved_by, finalized_at,
+            disbursed_at, is_locked, is_semi_monthly, cut_off_type
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          ON CONFLICT (period_name) DO NOTHING`,
+          [
+            p.period_name || key,
+            p.cut_off_start || '2024-07-01',
+            p.cut_off_end || '2024-07-31',
+            p.cut_off_end || '2024-07-31',
+            p.status || 'Draft',
+            p.total_gross || 0,
+            p.total_deductions || 0,
+            p.total_net || 0,
+            p.approved_by || null,
+            p.finalized_at ? new Date(p.finalized_at) : null,
+            p.disbursed_at ? new Date(p.disbursed_at) : null,
+            p.is_locked || false,
+            p.is_semi_monthly || false,
+            p.cut_off_type || '1st'
+          ]
+        );
+      }
+    } else {
+      const pRows = await client.query('SELECT * FROM payroll_periods');
+      for (const row of pRows.rows) {
+        if (payrollPeriods[row.period_name]) {
+          payrollPeriods[row.period_name].status = row.status;
+          payrollPeriods[row.period_name].is_locked = Boolean(row.is_locked);
+          payrollPeriods[row.period_name].approved_by = row.approved_by;
+          payrollPeriods[row.period_name].finalized_at = row.finalized_at;
+          payrollPeriods[row.period_name].disbursed_at = row.disbursed_at;
+          if (row.cut_off_type) payrollPeriods[row.period_name].cut_off_type = row.cut_off_type;
+        } else {
+          payrollPeriods[row.period_name] = {
+            period_name: row.period_name,
+            cut_off_start: row.cut_off_start ? new Date(row.cut_off_start).toISOString().split('T')[0] : '2026-09-01',
+            cut_off_end: row.cut_off_end ? new Date(row.cut_off_end).toISOString().split('T')[0] : '2026-09-15',
+            payout_date: row.payout_date ? new Date(row.payout_date).toISOString().split('T')[0] : '2026-09-15',
+            is_semi_monthly: Boolean(row.is_semi_monthly),
+            cut_off_type: row.cut_off_type || '1st',
+            status: row.status || 'Draft',
+            is_locked: Boolean(row.is_locked),
+            approved_by: row.approved_by,
+            finalized_at: row.finalized_at,
+            disbursed_at: row.disbursed_at,
+            total_gross: Number(row.total_gross || 0),
+            total_deductions: Number(row.total_deductions || 0),
+            total_net: Number(row.total_net || 0),
+            summary: {},
+            items: []
+          };
+        }
+      }
+    }
+
+    // Recalculate active cycles with hydrated data
+    syncAllActivePeriods();
+    console.log('✅ PostgreSQL database hydrated & synchronized across all secondary entities & payroll periods');
+  } catch (err) {
+    console.warn('⚠️  PostgreSQL seed/hydration warning:', err.message);
+  }
+}
+
 async function initDB() {
   try {
     const client = await pool.connect();
@@ -1933,12 +2287,15 @@ async function initDB() {
       await client.query(sql);
       console.log('✅ PostgreSQL tables and schema verified/created from schema.sql');
     }
+
+    await seedAndHydratePostgres(client);
     client.release();
   } catch (err) {
     console.log('ℹ️  PostgreSQL notice (using resilient in-memory repository):', err.message);
   }
 }
 initDB();
+
 
 // =========================================================================
 // 8C. OFFBOARDING & FINAL PAY (BACKPAY) CALCULATION ENGINE
@@ -2364,6 +2721,30 @@ const db = {
       priority: 'high'
     });
 
+    if (isPostgreConnected) {
+      try {
+        const res = await pool.query(
+          `INSERT INTO employees (
+            employee_code, first_name, last_name, email, phone, department, position,
+            employment_type, hire_date, status, encrypted_salary, encrypted_bank_account,
+            encrypted_tin, bank_name, base_salary, base_ot_pay, sss_number, philhealth_number,
+            pagibig_number, address, zip_code, leave_credits
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+          RETURNING id`,
+          [
+            newEmp.employee_code, newEmp.first_name, newEmp.last_name, newEmp.email, newEmp.phone,
+            newEmp.department, newEmp.position, newEmp.employment_type, newEmp.hire_date, newEmp.status,
+            encryptAES256(String(newEmp.base_salary)), newEmp.encrypted_bank_account, newEmp.encrypted_tin,
+            newEmp.bank_name, newEmp.base_salary, newEmp.base_ot_pay || 0, newEmp.sss_number, newEmp.philhealth_number,
+            newEmp.pagibig_number, newEmp.address, newEmp.zip_code, JSON.stringify(newEmp.leave_credits)
+          ]
+        );
+        if (res.rows[0]) newEmp.id = res.rows[0].id;
+      } catch (err) {
+        console.warn('[PostgreSQL employee insert error]:', err.message);
+      }
+    }
+
     // Re-sync all active periods
     syncAllActivePeriods();
 
@@ -2386,6 +2767,20 @@ const db = {
     if (data.salary || data.basic_pay) emp.base_salary = Number(data.salary || data.basic_pay);
     if (data.ot_pay !== undefined) emp.base_ot_pay = Number(data.ot_pay);
 
+    if (isPostgreConnected) {
+      try {
+        await pool.query(
+          `UPDATE employees SET
+            first_name = $1, last_name = $2, department = $3, position = $4,
+            status = $5, base_salary = $6, base_ot_pay = $7
+           WHERE id = $8`,
+          [emp.first_name, emp.last_name, emp.department, emp.position, emp.status, emp.base_salary, emp.base_ot_pay || 0, emp.id]
+        );
+      } catch (err) {
+        console.warn('[PostgreSQL employee update error]:', err.message);
+      }
+    }
+
     syncAllActivePeriods();
     return emp;
   },
@@ -2394,16 +2789,35 @@ const db = {
     const idx = masterEmployees.findIndex(e => e.id === Number(id));
     if (idx === -1) return false;
     masterEmployees.splice(idx, 1);
+
+    if (isPostgreConnected) {
+      try {
+        await pool.query('DELETE FROM employees WHERE id = $1', [Number(id)]);
+      } catch (err) {
+        console.warn('[PostgreSQL employee delete error]:', err.message);
+      }
+    }
+
     syncAllActivePeriods();
     return true;
   },
 
   // --- Payroll Computation & Lifecycle ---
   getComputationData: (month = 'July 2024') => {
-    return syncPeriodComputation(month);
+    const result = syncPeriodComputation(month);
+    return {
+      period: result.period || payrollPeriods[month] || payrollPeriods['July 2024'],
+      summary: result.summary,
+      employees: result.employees
+    };
   },
   getPayrollComputation: (month = 'July 2024') => {
-    return syncPeriodComputation(month);
+    const result = syncPeriodComputation(month);
+    return {
+      period: result.period || payrollPeriods[month] || payrollPeriods['July 2024'],
+      summary: result.summary,
+      employees: result.employees
+    };
   },
 
   computePayrollMonth: (month = 'July 2024') => {
@@ -2419,11 +2833,149 @@ const db = {
     return syncPeriodComputation(month);
   },
 
-  updatePayrollPeriodStatus: (month = 'July 2024', status) => {
+  getPayrollPeriods: async () => {
+    if (isPostgreConnected) {
+      try {
+        const rows = await pool.query('SELECT * FROM payroll_periods ORDER BY cut_off_start DESC, id DESC');
+        if (rows.rows.length > 0) {
+          return rows.rows.map(r => ({
+            period_name: r.period_name,
+            cut_off_start: r.cut_off_start ? new Date(r.cut_off_start).toISOString().split('T')[0] : '2026-09-01',
+            cut_off_end: r.cut_off_end ? new Date(r.cut_off_end).toISOString().split('T')[0] : '2026-09-15',
+            start_date: r.cut_off_start ? new Date(r.cut_off_start).toISOString().split('T')[0] : '2026-09-01',
+            end_date: r.cut_off_end ? new Date(r.cut_off_end).toISOString().split('T')[0] : '2026-09-15',
+            payout_date: r.payout_date ? new Date(r.payout_date).toISOString().split('T')[0] : '2026-09-15',
+            status: r.status || 'Draft',
+            is_locked: Boolean(r.is_locked),
+            is_semi_monthly: Boolean(r.is_semi_monthly),
+            cut_off_type: r.cut_off_type || '1st',
+            total_gross: Number(r.total_gross || 0),
+            total_net: Number(r.total_net || 0),
+            approved_by: r.approved_by
+          }));
+        }
+      } catch (err) {
+        console.warn('⚠️ Could not fetch payroll periods from PostgreSQL:', err.message);
+      }
+    }
+
+    return Object.values(payrollPeriods).map(p => ({
+      period_name: p.period_name,
+      cut_off_start: p.cut_off_start,
+      cut_off_end: p.cut_off_end,
+      start_date: p.cut_off_start,
+      end_date: p.cut_off_end,
+      payout_date: p.payout_date,
+      status: p.status || 'Draft',
+      is_locked: Boolean(p.is_locked),
+      is_semi_monthly: Boolean(p.is_semi_monthly),
+      cut_off_type: p.cut_off_type || '1st',
+      total_gross: Number(p.total_gross || 0),
+      total_net: Number(p.total_net || 0),
+      approved_by: p.approved_by
+    }));
+  },
+
+  createPayrollPeriod: async (periodData) => {
+    const {
+      period_name,
+      cut_off_start,
+      cut_off_end,
+      payout_date,
+      cut_off_type = '1st',
+      is_semi_monthly = true
+    } = periodData;
+
+    if (!period_name || !cut_off_start || !cut_off_end || !payout_date) {
+      throw new Error('Period Name, Cut-off Start, Cut-off End, and Payout Date are required.');
+    }
+
+    const startStr = cut_off_start.substring(0, 10);
+    const endStr = cut_off_end.substring(0, 10);
+    const payoutStr = payout_date.substring(0, 10);
+
+    const newPeriodObj = {
+      period_name,
+      cut_off_start: startStr,
+      cut_off_end: endStr,
+      start_date: startStr,
+      end_date: endStr,
+      payout_date: payoutStr,
+      is_semi_monthly: Boolean(is_semi_monthly),
+      cut_off_type,
+      status: 'Draft',
+      is_locked: false,
+      approved_by: null,
+      finalized_at: null,
+      disbursed_at: null,
+      total_gross: 0,
+      total_deductions: 0,
+      total_net: 0,
+      summary: {},
+      items: []
+    };
+
+    payrollPeriods[period_name] = newPeriodObj;
+
+    if (isPostgreConnected) {
+      try {
+        await pool.query(
+          `INSERT INTO payroll_periods (
+            period_name, cut_off_start, cut_off_end, payout_date, status,
+            total_gross, total_deductions, total_net, approved_by, finalized_at,
+            disbursed_at, is_locked, is_semi_monthly, cut_off_type
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          ON CONFLICT (period_name) DO UPDATE SET
+            cut_off_start = EXCLUDED.cut_off_start,
+            cut_off_end = EXCLUDED.cut_off_end,
+            payout_date = EXCLUDED.payout_date,
+            is_semi_monthly = EXCLUDED.is_semi_monthly,
+            cut_off_type = EXCLUDED.cut_off_type`,
+          [
+            period_name,
+            startStr,
+            endStr,
+            payoutStr,
+            'Draft',
+            0,
+            0,
+            0,
+            null,
+            null,
+            null,
+            false,
+            Boolean(is_semi_monthly),
+            cut_off_type
+          ]
+        );
+      } catch (sqlErr) {
+        console.warn('⚠️ Could not persist new payroll period to PostgreSQL:', sqlErr.message);
+      }
+    }
+
+    const compResult = syncPeriodComputation(period_name, true);
+    return {
+      success: true,
+      message: `Payroll period "${period_name}" successfully created and initialized in Draft mode.`,
+      period: payrollPeriods[period_name],
+      summary: compResult.summary,
+      employees: compResult.employees
+    };
+  },
+
+  updatePayrollPeriodStatus: async (month = 'July 2024', status, approverName = null) => {
     const period = payrollPeriods[month] || payrollPeriods['July 2024'];
     if (!period) return null;
 
     period.status = status;
+    if (status === 'Approved' && approverName) {
+      period.approved_by = approverName;
+    } else if (status === 'Draft') {
+      period.is_locked = false;
+      period.approved_by = null;
+      period.finalized_at = null;
+      period.disbursed_at = null;
+    }
     let rolloverResult = null;
 
     if (status === 'Finalized' || status === 'Disbursed' || status === 'Paid') {
@@ -2496,6 +3048,47 @@ const db = {
     }
 
     const comp = syncPeriodComputation(month, true);
+
+    // Persist status and lifecycle metadata directly into PostgreSQL
+    if (isPostgreConnected) {
+      try {
+        await pool.query(
+          `INSERT INTO payroll_periods (
+            period_name, cut_off_start, cut_off_end, payout_date, status,
+            total_gross, total_deductions, total_net, approved_by, finalized_at,
+            disbursed_at, is_locked, is_semi_monthly, cut_off_type
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          ON CONFLICT (period_name) DO UPDATE SET
+            status = EXCLUDED.status,
+            is_locked = EXCLUDED.is_locked,
+            approved_by = EXCLUDED.approved_by,
+            finalized_at = EXCLUDED.finalized_at,
+            disbursed_at = EXCLUDED.disbursed_at,
+            total_gross = EXCLUDED.total_gross,
+            total_deductions = EXCLUDED.total_deductions,
+            total_net = EXCLUDED.total_net`,
+          [
+            period.period_name || month,
+            period.cut_off_start || '2024-07-01',
+            period.cut_off_end || '2024-07-31',
+            period.cut_off_end || '2024-07-31',
+            period.status,
+            period.total_gross || 0,
+            period.total_deductions || 0,
+            period.total_net || 0,
+            period.approved_by || null,
+            period.finalized_at ? new Date(period.finalized_at) : null,
+            period.disbursed_at ? new Date(period.disbursed_at) : null,
+            period.is_locked || false,
+            period.is_semi_monthly || false,
+            period.cut_off_type || '1st'
+          ]
+        );
+      } catch (sqlErr) {
+        console.warn('⚠️  Could not persist payroll period status to PostgreSQL:', sqlErr.message);
+      }
+    }
+
     return {
       ...comp,
       period,
@@ -2554,33 +3147,51 @@ const db = {
     };
   },
 
-  createSalaryAdjustment: (data) => {
-    const newId = salaryAdjustments.length + 1;
+  createSalaryAdjustment: async (data) => {
     const emp = masterEmployees.find(e => e.id === Number(data.employee_id));
     const currentSalary = emp ? emp.base_salary : Number(data.current_salary);
     const proposedSalary = Number(data.proposed_salary);
     const diff = proposedSalary - currentSalary;
     const pct = currentSalary > 0 ? Number(((diff / currentSalary) * 100).toFixed(2)) : 0;
+    const reason = data.reason || 'Merit Increase';
+    const effective_date = data.effective_date || new Date().toISOString().split('T')[0];
+    const requested_by = data.requested_by || 'HR Specialist';
+    const status = 'Pending Approval';
+
+    let insertedId = salaryAdjustments.length > 0 ? Math.max(...salaryAdjustments.map(s => s.id)) + 1 : 1;
+
+    if (isPostgreConnected) {
+      try {
+        const res = await pool.query(
+          `INSERT INTO salary_adjustments (employee_id, current_salary, proposed_salary, adjustment_amount, adjustment_percentage, reason, effective_date, requested_by, status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+          [Number(data.employee_id), currentSalary, proposedSalary, diff, pct, reason, effective_date, requested_by, status]
+        );
+        if (res.rows[0]) insertedId = res.rows[0].id;
+      } catch (err) {
+        console.warn('[PostgreSQL salary adjustment insert error]:', err.message);
+      }
+    }
 
     const adjustment = {
-      id: newId,
+      id: insertedId,
       employee_id: Number(data.employee_id),
       current_salary: currentSalary,
       proposed_salary: proposedSalary,
       adjustment_amount: diff,
       adjustment_percentage: pct,
-      reason: data.reason || 'Merit Increase',
-      effective_date: data.effective_date || new Date().toISOString().split('T')[0],
-      requested_by: data.requested_by || 'HR Specialist',
+      reason,
+      effective_date,
+      requested_by,
       approved_by: null,
-      status: 'Pending Approval' // Always starts as Pending Approval
+      status
     };
 
     salaryAdjustments.unshift(adjustment);
     return adjustment;
   },
 
-  updateSalaryAdjustmentStatus: (id, status, approverName = 'Liza Gomez (HR Manager)') => {
+  updateSalaryAdjustmentStatus: async (id, status, approverName = 'Liza Gomez (HR Manager)') => {
     const adj = salaryAdjustments.find(a => a.id === Number(id));
     if (!adj) return null;
 
@@ -2591,33 +3202,76 @@ const db = {
       const emp = masterEmployees.find(e => e.id === adj.employee_id);
       if (emp && adj.effective_date <= new Date().toISOString().split('T')[0]) {
         emp.base_salary = adj.proposed_salary;
+        if (isPostgreConnected) {
+          try {
+            await pool.query('UPDATE employees SET base_salary = $1 WHERE id = $2', [adj.proposed_salary, emp.id]);
+          } catch (err) {
+            console.warn('[PostgreSQL base salary update error]:', err.message);
+          }
+        }
       }
       syncPeriodComputation('July 2024');
       syncPeriodComputation('August 2024');
     }
+
+    if (isPostgreConnected) {
+      try {
+        await pool.query(
+          'UPDATE salary_adjustments SET status = $1, approved_by = $2 WHERE id = $3',
+          [status, adj.approved_by, Number(id)]
+        );
+      } catch (err) {
+        console.warn('[PostgreSQL salary adjustment update error]:', err.message);
+      }
+    }
+
     return adj;
   },
 
-  updateAllowance: (employeeId, allowanceAmount) => {
+  updateAllowance: async (employeeId, allowanceAmount) => {
     const emp = masterEmployees.find(e => e.id === Number(employeeId));
     if (!emp) return null;
 
-    // Update or insert employee allowance
+    const amt = Number(allowanceAmount);
+
+    if (isPostgreConnected) {
+      try {
+        const existing = await pool.query(
+          'SELECT id FROM employee_allowances WHERE employee_id = $1 AND allowance_id = 1',
+          [emp.id]
+        );
+        if (existing.rows.length > 0) {
+          await pool.query(
+            'UPDATE employee_allowances SET custom_amount = $1, status = $2 WHERE id = $3',
+            [amt, 'Active', existing.rows[0].id]
+          );
+        } else {
+          await pool.query(
+            'INSERT INTO employee_allowances (employee_id, allowance_id, custom_amount, status) VALUES ($1, 1, $2, $3)',
+            [emp.id, amt, 'Active']
+          );
+        }
+      } catch (err) {
+        console.warn('[PostgreSQL allowance update error]:', err.message);
+      }
+    }
+
+    // Update or insert employee allowance in memory
     let ea = employeeAllowances.find(a => a.employee_id === emp.id && a.allowance_id === 1);
     if (ea) {
-      ea.custom_amount = Number(allowanceAmount);
+      ea.custom_amount = amt;
     } else {
       employeeAllowances.push({
         id: employeeAllowances.length + 1,
         employee_id: emp.id,
         allowance_id: 1,
-        custom_amount: Number(allowanceAmount),
+        custom_amount: amt,
         status: 'Active'
       });
     }
 
     syncPeriodComputation('July 2024');
-    return { employee_id: emp.id, allowance: Number(allowanceAmount) };
+    return { employee_id: emp.id, allowance: amt };
   },
 
   // --- Timekeeping & Attendance ---
@@ -2638,27 +3292,52 @@ const db = {
     });
   },
 
-  logAttendance: (record) => {
-    const newId = attendanceRecords.length + 1;
+  logAttendance: async (record) => {
     let empId = Number(record.employee_id);
     if (!empId && record.employee) {
       const found = masterEmployees.find(e => `${e.first_name} ${e.last_name}`.toLowerCase() === record.employee.toLowerCase());
       empId = found ? found.id : 1;
     }
 
+    const date = record.date || new Date().toISOString().split('T')[0];
+    const day_type = record.day_type || record.dayType || 'Regular Day';
+    const time_in = record.timeIn || record.time_in || '08:00 AM';
+    const time_out = record.timeOut || record.time_out || '05:00 PM';
+    const regular_hours = Number(record.regular_hours || record.regularHours) || 8.0;
+    const overtime_hours = record.type === 'Overtime' ? 2.5 : Number(record.overtime_hours || record.overtimeHours) || 0;
+    const night_diff_hours = Number(record.night_diff_hours || record.nightDiffHours) || 0;
+    const late_minutes = Number(record.late_minutes) || 0;
+    const attendance_status = record.attendance_status || 'Present';
+    const approval_status = 'Pending';
+
+    let insertedId = attendanceRecords.length > 0 ? Math.max(...attendanceRecords.map(a => a.id)) + 1 : 1;
+
+    if (isPostgreConnected) {
+      try {
+        const res = await pool.query(
+          `INSERT INTO attendance_records (employee_id, date, day_type, time_in, time_out, regular_hours, overtime_hours, night_diff_hours, late_minutes, attendance_status, approval_status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+          [empId, date, day_type, time_in, time_out, regular_hours, overtime_hours, night_diff_hours, late_minutes, attendance_status, approval_status]
+        );
+        if (res.rows[0]) insertedId = res.rows[0].id;
+      } catch (err) {
+        console.warn('[PostgreSQL attendance log error]:', err.message);
+      }
+    }
+
     const item = {
-      id: newId,
+      id: insertedId,
       employee_id: empId,
-      date: record.date || new Date().toISOString().split('T')[0],
-      day_type: record.day_type || record.dayType || 'Regular Day',
-      time_in: record.timeIn || record.time_in || '08:00 AM',
-      time_out: record.timeOut || record.time_out || '05:00 PM',
-      regular_hours: Number(record.regular_hours || record.regularHours) || 8.0,
-      overtime_hours: record.type === 'Overtime' ? 2.5 : Number(record.overtime_hours || record.overtimeHours) || 0,
-      night_diff_hours: Number(record.night_diff_hours || record.nightDiffHours) || 0,
-      late_minutes: Number(record.late_minutes) || 0,
-      attendance_status: record.attendance_status || 'Present',
-      approval_status: 'Pending', // Attendance with OT/Holiday starts Pending HR approval
+      date,
+      day_type,
+      time_in,
+      time_out,
+      regular_hours,
+      overtime_hours,
+      night_diff_hours,
+      late_minutes,
+      attendance_status,
+      approval_status,
       approved_by: null
     };
 
@@ -2666,18 +3345,23 @@ const db = {
     return item;
   },
 
-  approveAttendance: (id, status, approverName = 'Liza Gomez (HR Manager)') => {
+  approveAttendance: async (id, status, approverName = 'Liza Gomez (HR Manager)') => {
     const att = attendanceRecords.find(a => a.id === Number(id));
     if (!att) return null;
 
     att.approval_status = status;
     att.approved_by = approverName;
 
+    let is_ppa = false;
+    let ppa_source_period = null;
+
     // Detect if record belongs to a locked period
     const origPeriod = getPeriodForDate(att.date, true);
     if (status === 'Approved' && isPeriodLocked(origPeriod)) {
       att.is_ppa = true;
       att.ppa_source_period = origPeriod;
+      is_ppa = true;
+      ppa_source_period = origPeriod;
       db.createNotification({
         recipient_role: 'officer',
         title: 'Retroactive Adjustment (PPA) Queued',
@@ -2686,6 +3370,17 @@ const db = {
         module_id: 'payroll_computation',
         priority: 'high'
       });
+    }
+
+    if (isPostgreConnected) {
+      try {
+        await pool.query(
+          'UPDATE attendance_records SET approval_status = $1, approved_by = $2, is_ppa = $3, ppa_source_period = $4 WHERE id = $5',
+          [status, approverName, is_ppa, ppa_source_period, Number(id)]
+        );
+      } catch (err) {
+        console.warn('[PostgreSQL attendance approval error]:', err.message);
+      }
     }
 
     // Re-sync all active open periods so PPA and regular OT reflect immediately
@@ -2707,25 +3402,47 @@ const db = {
     });
   },
 
-  createClaim: (claimData) => {
-    const newId = claimsList.length + 1;
+  createClaim: async (claimData) => {
     let empId = Number(claimData.employee_id);
     if (!empId && claimData.employee) {
       const found = masterEmployees.find(e => `${e.first_name} ${e.last_name}`.toLowerCase() === claimData.employee.toLowerCase());
       empId = found ? found.id : 1;
     }
 
+    const claim_type = claimData.type || claimData.claim_type || 'Medical & Dental';
+    const date_filed = claimData.date || new Date().toISOString().split('T')[0];
+    const amount = Number(claimData.amount) || 0;
+    const description = claimData.description || 'Employee reimbursable expense';
+    const status = 'Submitted';
+    const reimbursement_status = 'Pending Reimbursement';
+    const payroll_period = 'July 2024';
+    let insertedId = claimsList.length > 0 ? Math.max(...claimsList.map(c => c.id)) + 1 : 1;
+    const claim_code = `CLM-2024-${String(insertedId).padStart(3, '0')}`;
+
+    if (isPostgreConnected) {
+      try {
+        const res = await pool.query(
+          `INSERT INTO claims (claim_code, employee_id, claim_type, date_filed, amount, description, status, reimbursement_status, payroll_period)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+          [claim_code, empId, claim_type, date_filed, amount, description, status, reimbursement_status, payroll_period]
+        );
+        if (res.rows[0]) insertedId = res.rows[0].id;
+      } catch (err) {
+        console.warn('[PostgreSQL claims insert error]:', err.message);
+      }
+    }
+
     const claim = {
-      id: newId,
-      claim_code: `CLM-2024-${String(newId).padStart(3, '0')}`,
+      id: insertedId,
+      claim_code,
       employee_id: empId,
-      claim_type: claimData.type || claimData.claim_type || 'Medical & Dental',
-      date_filed: claimData.date || new Date().toISOString().split('T')[0],
-      amount: Number(claimData.amount) || 0,
-      description: claimData.description || 'Employee reimbursable expense',
-      status: 'Submitted', // Starts as Submitted
-      reimbursement_status: 'Pending Reimbursement',
-      payroll_period: 'July 2024',
+      claim_type,
+      date_filed,
+      amount,
+      description,
+      status,
+      reimbursement_status,
+      payroll_period,
       approved_by: null
     };
 
@@ -2734,11 +3451,14 @@ const db = {
     return claim;
   },
 
-  updateClaimStatus: (id, status, approverName = 'Liza Gomez (HR Manager)') => {
+  updateClaimStatus: async (id, status, approverName = 'Liza Gomez (HR Manager)') => {
     const claim = claimsList.find(c => c.id === Number(id));
     if (!claim) return null;
 
     claim.status = status;
+    let is_ppa = false;
+    let ppa_source_period = null;
+
     if (status === 'Approved') {
       claim.approved_by = approverName;
       claim.reimbursement_status = 'Pending Reimbursement';
@@ -2747,6 +3467,8 @@ const db = {
       if (isPeriodLocked(origPeriod)) {
         claim.is_ppa = true;
         claim.ppa_source_period = origPeriod;
+        is_ppa = true;
+        ppa_source_period = origPeriod;
         db.createNotification({
           recipient_role: 'officer',
           title: 'Retroactive Claim (PPA) Queued',
@@ -2758,6 +3480,19 @@ const db = {
       }
     } else if (status === 'Rejected') {
       claim.reimbursement_status = 'Rejected';
+    }
+
+    if (isPostgreConnected) {
+      try {
+        await pool.query(
+          `UPDATE claims
+           SET status = $1, approved_by = $2, reimbursement_status = $3, is_ppa = $4, ppa_source_period = $5
+           WHERE id = $6`,
+          [claim.status, claim.approved_by, claim.reimbursement_status, is_ppa, ppa_source_period, Number(id)]
+        );
+      } catch (err) {
+        console.warn('[PostgreSQL claims update error]:', err.message);
+      }
     }
 
     // Re-sync all active open periods so reimbursement flows in immediately
@@ -2784,8 +3519,7 @@ const db = {
     });
   },
 
-  enrollBenefit: (data) => {
-    const newId = hmoEnrollments.length + 1;
+  enrollBenefit: async (data) => {
     let empId = Number(data.employee_id);
     if (!empId && data.employee) {
       const found = masterEmployees.find(e => `${e.first_name} ${e.last_name}`.toLowerCase() === data.employee.toLowerCase());
@@ -2793,18 +3527,40 @@ const db = {
     }
 
     const selectedPlan = benefitPlans.find(p => p.plan_tier === data.plan || p.name === data.plan) || benefitPlans[0];
+    const dependents_count = Number(data.dependents) || 0;
+    const monthly_premium = selectedPlan.default_monthly_premium;
+    const employer_share = selectedPlan.employer_share;
+    const employee_share = selectedPlan.employee_share;
+    const effective_date = data.effectiveDate || new Date().toISOString().split('T')[0];
+    const expiration_date = '2025-12-31';
+    const status = 'Active';
+
+    let insertedId = hmoEnrollments.length > 0 ? Math.max(...hmoEnrollments.map(h => h.id)) + 1 : 1;
+
+    if (isPostgreConnected) {
+      try {
+        const res = await pool.query(
+          `INSERT INTO hmo_enrollments (employee_id, plan_id, dependents_count, monthly_premium, employer_share, employee_share, effective_date, expiration_date, status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+          [empId, selectedPlan.id, dependents_count, monthly_premium, employer_share, employee_share, effective_date, expiration_date, status]
+        );
+        if (res.rows[0]) insertedId = res.rows[0].id;
+      } catch (err) {
+        console.warn('[PostgreSQL HMO enrollment error]:', err.message);
+      }
+    }
 
     const enrollment = {
-      id: newId,
+      id: insertedId,
       employee_id: empId,
       plan_id: selectedPlan.id,
-      dependents_count: Number(data.dependents) || 0,
-      monthly_premium: selectedPlan.default_monthly_premium,
-      employer_share: selectedPlan.employer_share,
-      employee_share: selectedPlan.employee_share,
-      effective_date: data.effectiveDate || new Date().toISOString().split('T')[0],
-      expiration_date: '2025-12-31',
-      status: 'Active'
+      dependents_count,
+      monthly_premium,
+      employer_share,
+      employee_share,
+      effective_date,
+      expiration_date,
+      status
     };
 
     hmoEnrollments.unshift(enrollment);
@@ -2812,10 +3568,19 @@ const db = {
     return enrollment;
   },
 
-  updateHMOStatus: (id, status) => {
+  updateHMOStatus: async (id, status) => {
     const enr = hmoEnrollments.find(e => e.id === Number(id));
     if (!enr) return null;
     enr.status = status;
+
+    if (isPostgreConnected) {
+      try {
+        await pool.query('UPDATE hmo_enrollments SET status = $1 WHERE id = $2', [status, Number(id)]);
+      } catch (err) {
+        console.warn('[PostgreSQL HMO status update error]:', err.message);
+      }
+    }
+
     syncPeriodComputation('July 2024');
     return enr;
   },
@@ -2833,8 +3598,7 @@ const db = {
     });
   },
 
-  createMicroloan: (data) => {
-    const newId = microloans.length + 1;
+  createMicroloan: async (data) => {
     let empId = Number(data.employee_id);
     if (!empId && data.employee) {
       const found = masterEmployees.find(e => `${e.first_name} ${e.last_name}`.toLowerCase() === data.employee.toLowerCase());
@@ -2843,20 +3607,40 @@ const db = {
     const principal = Number(data.principal_amount) || 10000;
     const installments = Number(data.total_installments) || 6;
     const monthlyDeduction = Math.round(principal / installments);
+    const loan_type = data.loan_type || 'Emergency Salary Advance';
+    const interest_rate = Number(data.interest_rate) || 0.00;
+    const status = 'Pending';
+    const reason = data.reason || 'Personal / Emergency assistance';
+
+    let insertedId = microloans.length > 0 ? Math.max(...microloans.map(m => m.id)) + 1 : 1;
+    const loan_code = `LN-2024-${String(insertedId).padStart(3, '0')}`;
+
+    if (isPostgreConnected) {
+      try {
+        const res = await pool.query(
+          `INSERT INTO microloans (loan_code, employee_id, loan_type, principal_amount, monthly_deduction, total_installments, remaining_installments, balance_amount, interest_rate, status, reason)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+          [loan_code, empId, loan_type, principal, monthlyDeduction, installments, installments, principal, interest_rate, status, reason]
+        );
+        if (res.rows[0]) insertedId = res.rows[0].id;
+      } catch (err) {
+        console.warn('[PostgreSQL microloan insert error]:', err.message);
+      }
+    }
 
     const loan = {
-      id: newId,
-      loan_code: `LN-2024-${String(newId).padStart(3, '0')}`,
+      id: insertedId,
+      loan_code,
       employee_id: empId,
-      loan_type: data.loan_type || 'Emergency Salary Advance',
+      loan_type,
       principal_amount: principal,
       monthly_deduction: monthlyDeduction,
       total_installments: installments,
       remaining_installments: installments,
       balance_amount: principal,
-      interest_rate: Number(data.interest_rate) || 0.00,
-      status: 'Pending',
-      reason: data.reason || 'Personal / Emergency assistance',
+      interest_rate,
+      status,
+      reason,
       approved_by: null,
       disbursed_date: null
     };
@@ -2865,20 +3649,34 @@ const db = {
     return loan;
   },
 
-  updateMicroloanStatus: (id, status, approverName = 'David Sterling (Finance Director)') => {
+  updateMicroloanStatus: async (id, status, approverName = 'David Sterling (Finance Director)') => {
     const loan = microloans.find(l => l.id === Number(id));
     if (!loan) return null;
 
     loan.status = status;
+    let disbursed_date = null;
     if (status === 'Active' || status === 'Approved') {
       loan.status = 'Active';
       loan.approved_by = approverName;
-      loan.disbursed_date = new Date().toISOString().split('T')[0];
+      disbursed_date = new Date().toISOString().split('T')[0];
+      loan.disbursed_date = disbursed_date;
+      syncPeriodComputation('July 2024');
+      syncPeriodComputation('August 2024');
     } else if (status === 'Rejected') {
       loan.status = 'Rejected';
     }
 
-    syncPeriodComputation('July 2024');
+    if (isPostgreConnected) {
+      try {
+        await pool.query(
+          'UPDATE microloans SET status = $1, approved_by = $2, disbursed_date = COALESCE($3, disbursed_date) WHERE id = $4',
+          [loan.status, approverName, disbursed_date, Number(id)]
+        );
+      } catch (err) {
+        console.warn('[PostgreSQL microloan update error]:', err.message);
+      }
+    }
+
     return loan;
   },
 
