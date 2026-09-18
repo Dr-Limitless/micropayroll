@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
 
 const AuthContext = createContext(null);
+const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
@@ -16,6 +17,9 @@ export function AuthProvider({ children }) {
   const [personas, setPersonas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [securityInfo, setSecurityInfo] = useState(null);
+  const [sessionExpiredNotice, setSessionExpiredNotice] = useState(() => {
+    return sessionStorage.getItem('mms_session_expired') === 'true';
+  });
 
   useEffect(() => {
     async function loadPersonas() {
@@ -31,6 +35,56 @@ export function AuthProvider({ children }) {
     loadPersonas();
   }, []);
 
+  const clearSessionExpiredNotice = useCallback(() => {
+    sessionStorage.removeItem('mms_session_expired');
+    setSessionExpiredNotice(false);
+  }, []);
+
+  const logout = useCallback((reason = null) => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('mms_access_token');
+    localStorage.removeItem('mms_user');
+    if (reason === 'inactivity') {
+      sessionStorage.setItem('mms_session_expired', 'true');
+      setSessionExpiredNotice(true);
+    } else {
+      sessionStorage.removeItem('mms_session_expired');
+      setSessionExpiredNotice(false);
+    }
+  }, []);
+
+  // 5-minute inactivity timer
+  useEffect(() => {
+    if (!token || !user) return;
+
+    let timeoutId = null;
+
+    const handleTimeout = () => {
+      logout('inactivity');
+    };
+
+    const resetTimer = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(handleTimeout, INACTIVITY_TIMEOUT_MS);
+    };
+
+    const activityEvents = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+    activityEvents.forEach(evt => {
+      window.addEventListener(evt, resetTimer, { passive: true });
+    });
+
+    // Initialize timer
+    resetTimer();
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      activityEvents.forEach(evt => {
+        window.removeEventListener(evt, resetTimer);
+      });
+    };
+  }, [token, user, logout]);
+
   const login = async (credentials) => {
     setLoading(true);
     try {
@@ -41,6 +95,7 @@ export function AuthProvider({ children }) {
         setSecurityInfo(res.security_info);
         localStorage.setItem('mms_access_token', res.access_token);
         localStorage.setItem('mms_user', JSON.stringify(res.user));
+        clearSessionExpiredNotice();
         return { success: true, user: res.user };
       } else if (res.require_2fa) {
         return { success: false, require_2fa: true, email: res.email, message: res.message };
@@ -64,6 +119,7 @@ export function AuthProvider({ children }) {
         setSecurityInfo(res.security_info);
         localStorage.setItem('mms_access_token', res.access_token);
         localStorage.setItem('mms_user', JSON.stringify(res.user));
+        clearSessionExpiredNotice();
         return { success: true, user: res.user };
       } else {
         return { success: false, error: res.error || 'Verification failed' };
@@ -73,13 +129,6 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('mms_access_token');
-    localStorage.removeItem('mms_user');
   };
 
   const switchRole = async (roleName) => {
@@ -101,6 +150,8 @@ export function AuthProvider({ children }) {
       personas,
       loading,
       securityInfo,
+      sessionExpiredNotice,
+      clearSessionExpiredNotice,
       login,
       verify2FA,
       logout,

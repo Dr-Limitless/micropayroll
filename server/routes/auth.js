@@ -44,6 +44,7 @@ function issueTokenResponse(user, req) {
       id: user.id,
       email: user.email,
       full_name: user.full_name,
+      name: user.full_name,
       role: user.role,
       role_label: user.role_label,
       avatar_url: user.avatar_url,

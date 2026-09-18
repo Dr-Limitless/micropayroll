@@ -548,11 +548,11 @@ function TimekeepingModule() {
                     <td className="py-3.5 px-4"><StatusBadge status={l.status || 'Pending'} /></td>
                     <td className="py-3.5 px-4 text-slate-500 text-[11px] whitespace-nowrap">{l.approved_by || '—'}</td>
                     <td className="py-3.5 px-4 text-right space-x-1 whitespace-nowrap">
-                      {(Number(l.overtime_hours) > 0 || l.day_type !== 'Regular Day') && l.status !== 'Approved' && canPerformAction(user?.role, 'APPROVE_OVERTIME') && (
-                        <button onClick={() => handleApprove(l.id, 'Approved')} className="px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 font-semibold hover:bg-emerald-100 transition-colors">Approve</button>
+                      {l.status !== 'Approved' && canPerformAction(user?.role, 'APPROVE_OVERTIME') && (
+                        <button onClick={() => handleApprove(l.id, 'Approved')} className="px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 font-semibold hover:bg-emerald-100 transition-colors cursor-pointer">Approve</button>
                       )}
-                      {(Number(l.overtime_hours) > 0 || l.day_type !== 'Regular Day') && l.status !== 'Rejected' && canPerformAction(user?.role, 'APPROVE_OVERTIME') && (
-                        <button onClick={() => handleApprove(l.id, 'Rejected')} className="px-2.5 py-1 rounded bg-rose-50 text-rose-700 font-semibold hover:bg-rose-100 transition-colors">Reject</button>
+                      {l.status !== 'Rejected' && canPerformAction(user?.role, 'APPROVE_OVERTIME') && (
+                        <button onClick={() => handleApprove(l.id, 'Rejected')} className="px-2.5 py-1 rounded bg-rose-50 text-rose-700 font-semibold hover:bg-rose-100 transition-colors cursor-pointer">Reject</button>
                       )}
                       {l.status === 'Approved' && <span className="text-emerald-600 font-semibold text-[11px]">✓ Enters Payroll</span>}
                       {l.status !== 'Approved' && !canPerformAction(user?.role, 'APPROVE_OVERTIME') && (
@@ -838,7 +838,7 @@ function SalaryAdjustmentModule() {
     try {
       const d = await api.getCompensation();
       setCompensation(d.compensation || []);
-      setAdjustments(d.adjustments || []);
+      setAdjustments(d.salaryAdjustments || d.adjustments || []);
     } catch { /* fallback */ }
     setLoading(false);
   }, []);
@@ -865,8 +865,8 @@ function SalaryAdjustmentModule() {
       return;
     }
     try {
-      const res = await api.createSalaryAdjustment(adjForm);
-      setAdjustments(prev => [res.adjustment, ...prev]);
+      await api.createSalaryAdjustment(adjForm);
+      await load();
       setShowAdjModal(false);
       setToast('Salary adjustment filed and submitted for approval!');
     } catch { setToast('Submission failed'); }
@@ -913,14 +913,16 @@ function SalaryAdjustmentModule() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {adjustments.map(adj => {
-                const inc = Number(adj.proposed_salary) - Number(adj.previous_salary);
-                const pct = Math.round((inc / (Number(adj.previous_salary) || 1)) * 100);
+                const prevSal = Number(adj.previous_salary ?? adj.current_salary ?? 0);
+                const propSal = Number(adj.proposed_salary ?? 0);
+                const inc = propSal - prevSal;
+                const pct = prevSal > 0 ? Math.round((inc / prevSal) * 100) : 0;
                 const isPending = adj.status === 'Pending' || adj.status === 'Pending Approval';
                 return (
                   <tr key={adj.id} className="hover:bg-slate-50/70">
-                    <td className="py-3.5 px-4 font-bold text-slate-900">{adj.employee_name}</td>
-                    <td className="py-3.5 px-4 font-mono text-slate-500">{fmt(adj.previous_salary)}</td>
-                    <td className="py-3.5 px-4 font-mono font-bold text-[#2E6BE6]">{fmt(adj.proposed_salary)}</td>
+                    <td className="py-3.5 px-4 font-bold text-slate-900">{adj.employee_name || `Employee #${adj.employee_id}`}</td>
+                    <td className="py-3.5 px-4 font-mono text-slate-500">{fmt(prevSal)}</td>
+                    <td className="py-3.5 px-4 font-mono font-bold text-[#2E6BE6]">{fmt(propSal)}</td>
                     <td className="py-3.5 px-4 font-mono text-emerald-600 font-semibold">+{fmt(inc)} (+{pct}%)</td>
                     <td className="py-3.5 px-4 font-mono text-slate-600">{adj.effective_date}</td>
                     <td className="py-3.5 px-4 text-slate-600 max-w-xs truncate">{adj.reason}</td>
@@ -960,8 +962,20 @@ function SalaryAdjustmentModule() {
             <div className="space-y-3 text-xs">
               <div>
                 <label className="font-semibold text-slate-600 mb-1 block">Employee *</label>
-                <select value={adjForm.employee_id} onChange={e => setAdjForm(f => ({ ...f, employee_id: e.target.value }))} className="w-full px-3 py-2 border border-[#E4E8F0] rounded-lg outline-none focus:border-[#2E6BE6] bg-white">
-                  {compensation.map(c => <option key={c.id} value={c.id}>{c.name} ({c.position})</option>)}
+                <select value={adjForm.employee_id} onChange={e => {
+                  const empId = e.target.value;
+                  const emp = compensation.find(c => String(c.id) === String(empId));
+                  setAdjForm(f => ({
+                    ...f,
+                    employee_id: empId,
+                    proposed_salary: emp ? String(Math.round(Number(emp.basic_salary) * 1.1)) : f.proposed_salary
+                  }));
+                }} className="w-full px-3 py-2 border border-[#E4E8F0] rounded-lg outline-none focus:border-[#2E6BE6] bg-white">
+                  {compensation.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.position}) — Current: ₱{Number(c.basic_salary || 0).toLocaleString()}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -1000,7 +1014,7 @@ function ClaimFilingModule() {
   const [toast, setToast] = useState(null);
   const [showLoanModal, setShowLoanModal] = useState(false);
   const isEmployee = user?.role === 'employee';
-  const defaultEmpName = user?.name || 'Sarah Jenkins';
+  const defaultEmpName = user?.full_name || user?.name || 'Maria Santos';
 
   const [form, setForm] = useState({
     employee: defaultEmpName,
@@ -1018,11 +1032,7 @@ function ClaimFilingModule() {
     reason: 'Family medical outpatient emergency'
   });
 
-  useEffect(() => {
-    if (user?.name) {
-      setForm(f => ({ ...f, employee: user.name }));
-    }
-  }, [user]);
+
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1043,26 +1053,40 @@ function ClaimFilingModule() {
     e.preventDefault();
     if (!form.amount) return;
     try {
-      const d = await api.createClaim(form);
-      setClaims(prev => [d.claim, ...prev]);
+      // Use the name as typed in the form; only fall back to logged-in user if field is empty
+      const claimantName = form.employee?.trim() || user?.full_name || user?.name || defaultEmpName;
+      const d = await api.createClaim({
+        ...form,
+        employee: claimantName,
+        employee_id: user?.id || (user?.email === 'maria.santos@mms.com' ? 1 : undefined)
+      });
+      // Attach correct employee name to returned claim object for local state
+      const enrichedClaim = { ...d.claim, employee: claimantName, employee_name: claimantName };
+      setClaims(prev => [enrichedClaim, ...prev]);
+      // Dispatch event so ClaimVerificationModule re-fetches
+      window.dispatchEvent(new Event('claimFiled'));
       setToast('Expense claim filed! Forwarded to Claim Verification & Approval queue.');
-      setForm({
-        employee: user?.name || defaultEmpName,
+      setForm(prev => ({
+        ...prev,
         type: 'Medical & Dental',
         amount: '',
         date: new Date().toISOString().split('T')[0],
         receipt_no: '',
         description: ''
-      });
+      }));
     } catch { setToast('Submission failed'); }
   };
+
+
 
   const handleCreateLoan = async (e) => {
     e.preventDefault();
     try {
+      const authorName = user?.full_name || user?.name || defaultEmpName;
       const res = await api.createMicroloan({
         ...loanForm,
-        employee: user?.name || defaultEmpName
+        employee: authorName,
+        employee_id: user?.id || (user?.email === 'maria.santos@mms.com' ? 1 : undefined)
       });
       setLoans(prev => [res.microloan, ...prev]);
       setShowLoanModal(false);
@@ -1072,19 +1096,25 @@ function ClaimFilingModule() {
     }
   };
 
+  const activeEmployeeFilter = (user?.full_name || user?.name || defaultEmpName).toLowerCase();
   const displayedClaims = isEmployee
     ? claims.filter(c => {
-        const cEmp = (c.employee || '').toLowerCase();
-        const uName = (user?.name || defaultEmpName).toLowerCase();
-        return cEmp.includes(uName) || uName.includes(cEmp) || c.employee === 'Sarah Jenkins' || c.employee_id === 1;
+        const cEmp = (c.employee || c.employee_name || '').toLowerCase();
+        return cEmp.includes(activeEmployeeFilter) || 
+               activeEmployeeFilter.includes(cEmp) || 
+               c.employee === 'Maria Santos' || 
+               c.employee_id === user?.id ||
+               (user?.email === 'maria.santos@mms.com' && c.employee_id === 1);
       })
     : claims;
 
   const displayedLoans = isEmployee
     ? loans.filter(l => {
-        const lEmp = (l.employee_name || '').toLowerCase();
-        const uName = (user?.name || defaultEmpName).toLowerCase();
-        return lEmp.includes(uName) || uName.includes(lEmp) || l.employee_id === 1;
+        const lEmp = (l.employee_name || l.employee || '').toLowerCase();
+        return lEmp.includes(activeEmployeeFilter) || 
+               activeEmployeeFilter.includes(lEmp) || 
+               l.employee_id === user?.id ||
+               (user?.email === 'maria.santos@mms.com' && l.employee_id === 1);
       })
     : loans;
 
@@ -1369,7 +1399,7 @@ function ClaimFilingModule() {
                 <label className="font-semibold text-slate-600 mb-1 block">Applicant</label>
                 <input 
                   disabled 
-                  value={user?.name || defaultEmpName} 
+                  value={user?.full_name || user?.name || defaultEmpName} 
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-100 text-slate-700 font-semibold" 
                 />
               </div>
@@ -1472,13 +1502,31 @@ function ClaimVerificationModule() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Auto-refresh when user switches back to the window (e.g. after filing a claim in another module)
+  useEffect(() => {
+    const onFocus = () => load();
+    const onClaimFiled = () => load();
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('claimFiled', onClaimFiled);
+    // Also poll every 30s so newly filed claims appear without manual refresh
+    const interval = setInterval(load, 30000);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('claimFiled', onClaimFiled);
+      clearInterval(interval);
+    };
+  }, [load]);
+
+
+
   const handleStatus = async (id, status) => {
     if (!canPerformAction(user?.role, 'VERIFY_CLAIM')) {
       setToast('Unauthorized: You do not have permission to verify or modify claims.');
       return;
     }
     try {
-      await api.updateClaimStatus(id, status, user?.name || 'Authorized Approver');
+      const approverName = user?.full_name || user?.name || 'Authorized Approver';
+      await api.updateClaimStatus(id, status, approverName);
       setClaims(prev => prev.map(c => c.id === id ? { ...c, status } : c));
       setToast(`Claim ${status}! Approved expense is now authorized for payroll reimbursement.`);
     } catch { setToast('Verification update failed'); }
@@ -1636,8 +1684,9 @@ function ReimbursementProcessingModule() {
       return;
     }
     try {
-      await api.updateMicroloanStatus(loanId, newStatus, user?.name || 'David Sterling (Finance Director)');
-      setLoans(prev => prev.map(l => l.id === loanId ? { ...l, status: newStatus, approved_by: user?.name || 'David Sterling (Finance Director)' } : l));
+      const approverName = user?.full_name ? `${user.full_name} (${user.role_label || 'Finance Director'})` : (user?.name || 'Diana Sterling (Finance Director)');
+      await api.updateMicroloanStatus(loanId, newStatus, approverName);
+      setLoans(prev => prev.map(l => l.id === loanId ? { ...l, status: newStatus, approved_by: approverName } : l));
       setToast(`Microloan request ${newStatus === 'Active' ? 'Approved & activated in live payroll' : 'Rejected'}!`);
     } catch {
       setToast('Failed to update microloan status.');
@@ -1695,7 +1744,7 @@ function ReimbursementProcessingModule() {
       {subTab === 'reimbursements' ? (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <KpiCard label="Queued for July 2024 Payroll" value={fmt(totalPendingInPayroll)} sub="Active payroll reimbursement" color="text-orange-600" icon={Clock} />
+            <KpiCard label="Queued for Payroll Payout" value={fmt(totalPendingInPayroll)} sub="Active payroll reimbursement" color="text-orange-600" icon={Clock} />
             <KpiCard label="Total Reimbursed to Date" value={fmt(totalDisbursed)} sub="Successfully settled funds" color="text-indigo-600" icon={CheckCircle2} />
             <KpiCard label="Settlement Rate" value={approvedClaims.length ? `${Math.round((claims.filter(c => c.status === 'Reimbursed').length / approvedClaims.length) * 100)}%` : '100%'} sub="Of approved claims paid" icon={TrendingUp} />
           </div>
@@ -1725,7 +1774,7 @@ function ReimbursementProcessingModule() {
                       <td className="py-3.5 px-4 text-slate-600">{c.type || c.claim_type}</td>
                       <td className="py-3.5 px-4 font-mono font-bold text-emerald-700">+{fmt(c.amount)}</td>
                       <td className="py-3.5 px-4 font-mono text-slate-500">Electronic Bank Transfer</td>
-                      <td className="py-3.5 px-4 font-semibold text-slate-700">July 2024 Cycle</td>
+                      <td className="py-3.5 px-4 font-semibold text-slate-700">{c.payroll_period || 'September 16–30, 2026'}</td>
                       <td className="py-3.5 px-4">
                         {c.status === 'Reimbursed' ? (
                           <div>
@@ -1738,7 +1787,7 @@ function ReimbursementProcessingModule() {
                           </div>
                         ) : (
                           <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold text-[10px] border border-emerald-100">
-                            In July 2024 Payroll
+                            In {c.payroll_period || 'September 16–30, 2026'} Payroll
                           </span>
                         )}
                       </td>
@@ -2160,8 +2209,8 @@ function BenefitsMonitoringModule() {
   const displayedBenefits = isEmployee
     ? benefits.filter(b => {
         const emp = (b.employee || '').toLowerCase();
-        const me = (user?.name || 'Sarah Jenkins').toLowerCase();
-        return emp.includes(me) || me.includes(emp) || b.employee === 'Sarah Jenkins';
+        const me = (user?.full_name || user?.name || 'Maria Santos').toLowerCase();
+        return emp.includes(me) || me.includes(emp) || b.employee === 'Maria Santos' || b.employee_id === user?.id || (user?.email === 'maria.santos@mms.com' && b.employee_id === 1);
       })
     : benefits;
 
@@ -2591,8 +2640,426 @@ function GovernmentComplianceModule() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   MODULE 16: DEDICATED MICROLOANS & SALARY ADVANCES WORKSPACE
+═══════════════════════════════════════════════════════════════ */
+function DedicatedMicroloansModule() {
+  const { user } = useAuth();
+  const [loans, setLoans] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+
+  const isEmployee = user?.role === 'employee';
+  const defaultEmpName = user?.full_name || user?.name || 'Maria Santos';
+
+  const [loanForm, setLoanForm] = useState({
+    loan_type: 'Emergency Salary Advance',
+    principal_amount: '15000',
+    total_installments: '6',
+    reason: 'Family medical outpatient emergency'
+  });
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.getMicroloans();
+      setLoans(res.microloans || []);
+    } catch { /* fallback */ }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleApply = async (e) => {
+    e.preventDefault();
+    if (!loanForm.principal_amount) return;
+    try {
+      const authorName = user?.full_name || user?.name || defaultEmpName;
+      const res = await api.createMicroloan({
+        ...loanForm,
+        employee: authorName,
+        employee_id: user?.id || (user?.email === 'maria.santos@mms.com' ? 1 : undefined)
+      });
+      setLoans(prev => [res.microloan, ...prev]);
+      setShowApplyModal(false);
+      setToast('Salary advance application submitted! Queued for Finance Director review.');
+    } catch {
+      setToast('Failed to submit advance application');
+    }
+  };
+
+  const handleStatusChange = async (loanId, newStatus) => {
+    if (!canPerformAction(user?.role, 'APPROVE_MICROLOAN')) {
+      setToast('Unauthorized: Only the Finance Director or Admin can approve salary advances.');
+      return;
+    }
+    try {
+      const approverName = user?.full_name ? `${user.full_name} (${user.role_label || 'Finance Director'})` : (user?.name || 'Diana Sterling (Finance Director)');
+      await api.updateMicroloanStatus(loanId, newStatus, approverName);
+      setLoans(prev => prev.map(l => l.id === loanId ? { ...l, status: newStatus, approved_by: approverName } : l));
+      setToast(`Microloan request ${newStatus === 'Active' ? 'Approved & integrated into live payroll' : 'Rejected'}!`);
+    } catch {
+      setToast('Failed to update microloan status.');
+    }
+  };
+
+  const activeEmployeeFilter = (user?.full_name || user?.name || defaultEmpName).toLowerCase();
+  const displayedLoans = isEmployee
+    ? loans.filter(l => {
+        const lEmp = (l.employee_name || l.employee || '').toLowerCase();
+        return lEmp.includes(activeEmployeeFilter) || 
+               activeEmployeeFilter.includes(lEmp) || 
+               l.employee_id === user?.id ||
+               (user?.email === 'maria.santos@mms.com' && l.employee_id === 1);
+      })
+    : loans;
+
+  const filtered = displayedLoans.filter(l => {
+    const q = search.toLowerCase();
+    const matchesSearch = !search.trim() ||
+      (l.loan_code && l.loan_code.toLowerCase().includes(q)) ||
+      (l.employee_name && l.employee_name.toLowerCase().includes(q)) ||
+      (l.loan_type && l.loan_type.toLowerCase().includes(q)) ||
+      (l.reason && l.reason.toLowerCase().includes(q));
+    const matchesStatus = statusFilter === 'All' || l.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const pendingList = displayedLoans.filter(l => l.status === 'Pending');
+  const activeList = displayedLoans.filter(l => l.status === 'Active');
+
+  const totalOutstanding = activeList.reduce((s, l) => s + Number(l.balance_amount || 0), 0);
+  const totalMonthlyAmort = activeList.reduce((s, l) => s + Number(l.monthly_deduction || 0), 0);
+  const totalDisbursed = displayedLoans.filter(l => l.status === 'Active' || l.status === 'Paid Off').reduce((s, l) => s + Number(l.principal_amount || 0), 0);
+
+  return (
+    <div className="space-y-6">
+      {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <SectionHeader 
+          color="#f97316" 
+          title={isEmployee ? "My Microloans & Cash Advances" : "Microloans & Salary Advances Management"} 
+          sub="Microfinance assistance, emergency salary advances, amortization schedules & payroll deduction integration" 
+        />
+        <div className="flex items-center gap-2">
+          {canPerformAction(user?.role, 'REQUEST_MICROLOAN') && (
+            <button
+              onClick={() => setShowApplyModal(true)}
+              className="px-4 py-2 rounded-xl bg-[#f97316] hover:bg-orange-600 text-white font-semibold text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Apply for Salary Advance</span>
+            </button>
+          )}
+          <button onClick={load} className="p-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 transition-colors">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <KpiCard 
+          label={isEmployee ? "My Outstanding Advance" : "Total Outstanding Advances"} 
+          value={fmt(totalOutstanding)} 
+          sub="Scheduled for 2nd cut-off deduction" 
+          color="text-orange-600" 
+          icon={DollarSign} 
+        />
+        <KpiCard 
+          label="Monthly Amortization Total" 
+          value={fmt(totalMonthlyAmort)} 
+          sub={`${activeList.length} active repayment terms`} 
+          color="text-indigo-600" 
+          icon={Calendar} 
+        />
+        <KpiCard 
+          label="Pending Advance Requests" 
+          value={pendingList.length} 
+          sub={pendingList.length > 0 ? "Requires Finance Director review" : "All requests signed off"} 
+          color={pendingList.length > 0 ? "text-amber-600" : "text-slate-900"} 
+          icon={AlertCircle} 
+        />
+        <KpiCard 
+          label="Total Disbursed to Date" 
+          value={fmt(totalDisbursed)} 
+          sub="Total financial assistance granted" 
+          color="text-emerald-600" 
+          icon={CheckCircle2} 
+        />
+      </div>
+
+      {/* Pending Approvals Queue (Featured at top if pending requests exist) */}
+      {pendingList.length > 0 && (
+        <div className="bg-amber-50/70 rounded-2xl border border-amber-200 shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-amber-600" />
+              <h2 className="text-sm font-bold text-amber-950">
+                Pending Approval Queue ({pendingList.length} {pendingList.length === 1 ? 'Request' : 'Requests'})
+              </h2>
+            </div>
+            {!canPerformAction(user?.role, 'APPROVE_MICROLOAN') && (
+              <span className="text-[11px] font-semibold text-amber-800 bg-amber-200/60 px-2.5 py-0.5 rounded-full">
+                Finance Director Clearance Required
+              </span>
+            )}
+          </div>
+
+          <div className="overflow-x-auto bg-white rounded-xl border border-amber-200/80 shadow-xs">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-amber-100/50 border-b border-amber-200 text-amber-900">
+                <tr>
+                  <th className="py-2.5 px-4 font-bold uppercase text-[10.5px]">Loan Code</th>
+                  <th className="py-2.5 px-4 font-bold uppercase text-[10.5px]">Borrower</th>
+                  <th className="py-2.5 px-4 font-bold uppercase text-[10.5px]">Assistance Category</th>
+                  <th className="py-2.5 px-4 font-bold uppercase text-[10.5px]">Principal Amount</th>
+                  <th className="py-2.5 px-4 font-bold uppercase text-[10.5px]">Monthly Deduction</th>
+                  <th className="py-2.5 px-4 font-bold uppercase text-[10.5px]">Repayment Term</th>
+                  <th className="py-2.5 px-4 font-bold uppercase text-[10.5px]">Purpose</th>
+                  <th className="py-2.5 px-4 font-bold uppercase text-[10.5px] text-right">Approval Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-amber-100">
+                {pendingList.map(p => (
+                  <tr key={p.id} className="hover:bg-amber-50/50 transition-colors">
+                    <td className="py-3 px-4 font-mono font-bold text-slate-700">{p.loan_code}</td>
+                    <td className="py-3 px-4 font-bold text-slate-900">{p.employee_name || p.employee}</td>
+                    <td className="py-3 px-4 text-slate-700 font-medium">{p.loan_type}</td>
+                    <td className="py-3 px-4 font-mono font-bold text-slate-900">{fmt(p.principal_amount)}</td>
+                    <td className="py-3 px-4 font-mono font-bold text-orange-700">-{fmt(p.monthly_deduction)}/mo</td>
+                    <td className="py-3 px-4 font-mono text-slate-600">{p.total_installments} monthly cut-offs</td>
+                    <td className="py-3 px-4 text-slate-600 max-w-[200px] truncate" title={p.reason}>{p.reason}</td>
+                    <td className="py-3 px-4 text-right space-x-1.5 whitespace-nowrap">
+                      {canPerformAction(user?.role, 'APPROVE_MICROLOAN') ? (
+                        <>
+                          <button
+                            onClick={() => handleStatusChange(p.id, 'Active')}
+                            className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleStatusChange(p.id, 'Rejected')}
+                            className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs border border-rose-200 transition-all cursor-pointer"
+                          >
+                            Reject
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-[11px] text-slate-400 italic">Awaiting Director Sign-off</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Main Advances Portfolio Ledger */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900">{isEmployee ? "My Advance Records & Repayment Status" : "Active Microloans & Advances Ledger"}</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Amortizations are automatically deducted on the 2nd semi-monthly cut-off</p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative w-48 sm:w-60">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search advances, code..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-xl text-xs outline-none focus:border-orange-500"
+              />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs bg-white text-slate-700 outline-none"
+            >
+              <option value="All">All Statuses</option>
+              <option value="Active">Active / In Repayment</option>
+              <option value="Pending">Pending Approval</option>
+              <option value="Paid Off">Paid Off / Settled</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase">Loan Code</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase">Borrower</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase">Category</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase">Principal</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase">Remaining Balance</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase">Monthly Deduction</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase">Amortization Progress</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase">Status</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase">Approver</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filtered.map(l => {
+                const totalInstall = Number(l.total_installments) || 6;
+                const remainInstall = l.status === 'Paid Off' ? 0 : Number(l.remaining_installments ?? totalInstall);
+                const paidInstall = totalInstall - remainInstall;
+                const pct = Math.min(100, Math.round((paidInstall / totalInstall) * 100));
+
+                return (
+                  <tr key={l.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3.5 px-4 font-mono font-bold text-slate-800">{l.loan_code}</td>
+                    <td className="py-3.5 px-4 font-bold text-slate-900">{l.employee_name || l.employee}</td>
+                    <td className="py-3.5 px-4 text-slate-700 font-medium">{l.loan_type}</td>
+                    <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{fmt(l.principal_amount)}</td>
+                    <td className="py-3.5 px-4 font-mono font-bold text-orange-700">{fmt(l.balance_amount)}</td>
+                    <td className="py-3.5 px-4 font-mono font-semibold text-slate-700">-{fmt(l.monthly_deduction)}/mo</td>
+                    <td className="py-3.5 px-4 min-w-[140px]">
+                      <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono mb-1">
+                        <span>{paidInstall}/{totalInstall} mos</span>
+                        <span>{pct}%</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-[#f97316] rounded-full transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <StatusBadge status={l.status} />
+                    </td>
+                    <td className="py-3.5 px-4 text-slate-500 text-[11px]">{l.approved_by || '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Apply Modal */}
+      {showApplyModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200 text-xs animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-orange-500" />
+                Apply for Microfinance Salary Advance
+              </h2>
+              <button onClick={() => setShowApplyModal(false)} className="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleApply} className="space-y-3.5">
+              <div>
+                <label className="font-semibold text-slate-600 mb-1 block">Applicant Name</label>
+                <input 
+                  disabled 
+                  value={user?.full_name || user?.name || defaultEmpName} 
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-100 text-slate-700 font-semibold" 
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-600 mb-1 block">Assistance Category *</label>
+                <select 
+                  value={loanForm.loan_type} 
+                  onChange={e => setLoanForm({ ...loanForm, loan_type: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white outline-none focus:border-orange-500"
+                >
+                  <option>Emergency Salary Advance</option>
+                  <option>Medical Assistance Advance</option>
+                  <option>Home Office Equipment Advance</option>
+                  <option>Educational Assistance Loan</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-semibold text-slate-600 mb-1 block">Principal Amount (₱) *</label>
+                  <input 
+                    type="number" 
+                    required 
+                    min="1000" 
+                    max="100000" 
+                    step="500"
+                    value={loanForm.principal_amount} 
+                    onChange={e => setLoanForm({ ...loanForm, principal_amount: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-orange-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-600 mb-1 block">Repayment Term *</label>
+                  <select 
+                    value={loanForm.total_installments} 
+                    onChange={e => setLoanForm({ ...loanForm, total_installments: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white outline-none focus:border-orange-500"
+                  >
+                    <option value="2">2 Months (4 Cut-offs)</option>
+                    <option value="3">3 Months (6 Cut-offs)</option>
+                    <option value="6">6 Months (12 Cut-offs)</option>
+                    <option value="12">12 Months (24 Cut-offs)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="p-3 bg-orange-50 rounded-xl border border-orange-200 text-[11px] text-orange-900 space-y-1">
+                <div className="flex justify-between">
+                  <span>Monthly Payroll Amortization:</span>
+                  <strong className="font-mono font-bold">
+                    {fmt(Math.round(Number(loanForm.principal_amount || 0) / Number(loanForm.total_installments || 1)))}/mo
+                  </strong>
+                </div>
+                <div className="text-[10px] text-orange-700">
+                  Deducted automatically on 2nd cut-off (16th–30th) once approved by the Finance Director.
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-600 mb-1 block">Reason / Purpose of Advance *</label>
+                <textarea 
+                  required 
+                  rows="2"
+                  value={loanForm.reason} 
+                  onChange={e => setLoanForm({ ...loanForm, reason: e.target.value })}
+                  placeholder="State the reason for this advance request..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-orange-500 text-xs"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button 
+                  type="button" 
+                  onClick={() => setShowApplyModal(false)}
+                  className="px-4 py-2 rounded-xl text-slate-500 hover:bg-slate-100 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-4 py-2 rounded-xl bg-[#f97316] hover:bg-orange-600 text-white font-bold shadow-md"
+                >
+                  Submit Application
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    MAIN EXPORT ROUTER
-   Maps each of the 15 distinct submodules to its dedicated view
+   Maps each of the distinct submodules to its dedicated view
 ═══════════════════════════════════════════════════════════════ */
 export default function ModuleContentView({ moduleId, moduleLabel, categoryLabel }) {
   const { privacyMode } = usePrivacy();
@@ -2610,6 +3077,7 @@ export default function ModuleContentView({ moduleId, moduleLabel, categoryLabel
   if (moduleId === 'claim_filing') return <ClaimFilingModule />;
   if (moduleId === 'claim_verification') return <ClaimVerificationModule />;
   if (moduleId === 'reimbursement') return <ReimbursementProcessingModule />;
+  if (moduleId === 'microloans') return <DedicatedMicroloansModule />;
 
   // 4. HMO & Benefits Administration Submodules
   if (moduleId === 'benefits_enrollment') return <BenefitsEnrollmentModule />;

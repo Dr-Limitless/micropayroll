@@ -28,6 +28,7 @@ const moduleMeta = {
   claim_filing: { label: 'Employee Claim Filing', category: 'Claims & Reimbursement' },
   claim_verification: { label: 'Claim Verification & Approval', category: 'Claims & Reimbursement' },
   reimbursement: { label: 'Reimbursement Processing & Monitoring', category: 'Claims & Reimbursement' },
+  microloans: { label: 'Microloans & Salary Advances', category: 'Claims & Reimbursement' },
 
   // HMO & Benefits Administration
   benefits_enrollment: { label: 'Benefits Enrollment & Management', category: 'HMO & Benefits Administration' },

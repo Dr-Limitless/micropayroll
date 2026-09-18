@@ -223,6 +223,9 @@ CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);
 ALTER TABLE claims ADD COLUMN IF NOT EXISTS payroll_period VARCHAR(100);
 ALTER TABLE claims ADD COLUMN IF NOT EXISTS is_ppa BOOLEAN DEFAULT FALSE;
 ALTER TABLE claims ADD COLUMN IF NOT EXISTS ppa_source_period VARCHAR(100);
+ALTER TABLE claims ADD COLUMN IF NOT EXISTS employee_name VARCHAR(255);
+ALTER TABLE claims ALTER COLUMN employee_id DROP NOT NULL;
+ALTER TABLE claims DROP CONSTRAINT IF EXISTS claims_employee_id_fkey;
 
 ALTER TABLE attendance_records ADD COLUMN IF NOT EXISTS day_type VARCHAR(50) DEFAULT 'Regular Day';
 ALTER TABLE attendance_records ADD COLUMN IF NOT EXISTS night_diff_hours NUMERIC(4, 2) DEFAULT 0.00;

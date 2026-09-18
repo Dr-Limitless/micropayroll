@@ -50,7 +50,8 @@ export default function Sidebar({ activeModule, setActiveModule, taskCounts = {}
       submodules: [
         { id: 'claim_filing', mono: 'CF', label: 'Employee Claim Filing' },
         { id: 'claim_verification', mono: 'CV', label: 'Claim Verification' },
-        { id: 'reimbursement', mono: 'RP', label: 'Reimbursement Processing' }
+        { id: 'reimbursement', mono: 'RP', label: 'Reimbursement Processing' },
+        { id: 'microloans', mono: 'ML', label: 'Microloans & Cash Advances' }
       ]
     },
     {
@@ -88,6 +89,7 @@ export default function Sidebar({ activeModule, setActiveModule, taskCounts = {}
       if (sub.id === 'timekeeping') return 'My Attendance Logs';
       if (sub.id === 'claim_filing') return 'My Expense Claims';
       if (sub.id === 'benefits_monitoring') return 'My HMO Card & Benefits';
+      if (sub.id === 'microloans') return 'My Microloans & Advances';
       if (sub.id === 'government_compliance') return 'My Statutory Contributions';
     }
     return sub.label;

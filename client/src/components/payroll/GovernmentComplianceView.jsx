@@ -241,7 +241,7 @@ export default function GovernmentComplianceView() {
               className="px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 bg-white shadow-sm outline-none focus:border-emerald-500 cursor-pointer"
             >
               <optgroup label="── 📅 2026 Live Cycles ──">
-                <option value="September 2026">🟢 September 2026 (Live Current)</option>
+                <option value="September 2026">September 2026 (Live Current)</option>
                 <option value="October 2026">October 2026</option>
                 <option value="November 2026">November 2026</option>
                 <option value="December 2026">December 2026</option>

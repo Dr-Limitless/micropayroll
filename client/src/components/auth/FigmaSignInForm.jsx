@@ -14,7 +14,7 @@ import { ACCENT } from '../../theme';
 import { api } from '../../services/api';
 
 export default function FigmaSignInForm({ onLoginSuccess }) {
-  const { login, verify2FA, loading: authLoading } = useAuth();
+  const { login, verify2FA, loading: authLoading, sessionExpiredNotice } = useAuth();
 
   const [step, setStep] = useState('credentials');
   const [email, setEmail] = useState('');
@@ -214,6 +214,18 @@ export default function FigmaSignInForm({ onLoginSuccess }) {
       <div style={{ fontSize: 14, color: '#64748B', marginTop: 6, marginBottom: 28 }}>
         Sign in to your operations dashboard
       </div>
+
+      {sessionExpiredNotice && (
+        <div style={{ padding: '12px 14px', borderRadius: 10, background: '#FFFBEB', border: '1px solid #FDE68A', color: '#92400E', fontSize: 13, marginBottom: 18, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          <span style={{ fontSize: 16 }}>🔒</span>
+          <div>
+            <div style={{ fontWeight: 700, color: '#78350F' }}>Session Inactivity Timeout</div>
+            <div style={{ fontSize: 12, marginTop: 2, color: '#92400E' }}>
+              You were automatically signed out after 5 minutes of inactivity to protect employee payroll and financial records.
+            </div>
+          </div>
+        </div>
+      )}
 
       {errorMsg && (
         <div style={{ padding: '10px 14px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FEE2E2', color: '#DC2626', fontSize: 13, marginBottom: 18 }}>

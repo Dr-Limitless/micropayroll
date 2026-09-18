@@ -39,12 +39,33 @@ app.get('/api/health', (req, res) => {
 });
 
 // Global process resilience guards
+const fs = require('fs');
+const path = require('path');
+const exitLog = path.join(__dirname, 'exit.log');
+
 process.on('uncaughtException', (err) => {
-  console.error('⚠️ Uncaught Exception:', err.message);
+  console.error('⚠️ Uncaught Exception:', err.stack || err.message);
+  try { fs.appendFileSync(exitLog, `[${new Date().toISOString()}] Uncaught Exception: ${err.stack || err.message}\n`); } catch {}
 });
 
 process.on('unhandledRejection', (reason) => {
   console.error('⚠️ Unhandled Rejection:', reason);
+  try { fs.appendFileSync(exitLog, `[${new Date().toISOString()}] Unhandled Rejection: ${reason}\n`); } catch {}
+});
+
+process.on('exit', (code) => {
+  console.log(`🔴 Process exited with code ${code}`);
+  try { fs.appendFileSync(exitLog, `[${new Date().toISOString()}] Process exit with code: ${code}\n`); } catch {}
+});
+
+process.on('SIGINT', () => {
+  try { fs.appendFileSync(exitLog, `[${new Date().toISOString()}] Received SIGINT\n`); } catch {}
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  try { fs.appendFileSync(exitLog, `[${new Date().toISOString()}] Received SIGTERM\n`); } catch {}
+  process.exit(0);
 });
 
 // Start Server

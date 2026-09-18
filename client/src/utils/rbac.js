@@ -32,6 +32,7 @@ export const MODULE_PERMISSIONS = {
   claim_filing:          ['admin', 'employee'],
   claim_verification:    ['admin', 'manager', 'officer'],
   reimbursement:         ['admin', 'officer', 'director'],
+  microloans:            ['admin', 'manager', 'officer', 'director', 'employee'],
 
   // HMO & Benefits Administration
   benefits_enrollment:   ['admin', 'manager'],
@@ -69,7 +70,7 @@ export const STRICT_SOD_ACTIONS = [
 
 export const ACTION_CAPABILITIES = {
   // Payroll Computation Actions
-  COMPUTE_PAYROLL: ['admin', 'officer'],
+  COMPUTE_PAYROLL: ['admin', 'officer', 'director'],
   SUBMIT_FOR_REVIEW: ['admin', 'officer'],   // Payroll Officer (or Admin superuser)
   APPROVE_PAYROLL: ['admin', 'director'],    // Finance Director (or Admin superuser)
   FINALIZE_AND_LOCK: ['admin', 'director'],  // Finance Director (or Admin superuser)

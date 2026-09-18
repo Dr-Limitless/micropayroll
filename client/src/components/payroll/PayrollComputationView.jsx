@@ -103,7 +103,7 @@ export default function PayrollComputationView({ searchFilter }) {
   const [employees, setEmployees] = useState([]);
   const [summary, setSummary] = useState(null);
   const [period, setPeriod] = useState(null);
-  const [selectedMonth, setSelectedMonth] = useState('September 1\u201315, 2026');
+  const [selectedMonth, setSelectedMonth] = useState('September 16–30, 2026');
   const [isComputing, setIsComputing] = useState(false);
   const [isUpdatingPeriod, setIsUpdatingPeriod] = useState(false);
   const [selectedPayslipId, setSelectedPayslipId] = useState(null);
@@ -112,10 +112,78 @@ export default function PayrollComputationView({ searchFilter }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showNewPeriodModal, setShowNewPeriodModal] = useState(false);
   const [customPeriods, setCustomPeriods] = useState([]);
+  const [allPeriods, setAllPeriods] = useState([]);
   const [isSubmittingEmp, setIsSubmittingEmp] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showReport, setShowReport] = useState(false);
   const [localSearch, setLocalSearch] = useState('');
+
+  // Helpers for dynamic period dropdown status & today badge
+  const getPeriodMeta = (pName) => allPeriods.find(p => p.period_name === pName);
+
+  const isCurrentCutOff = (pObj) => {
+    if (!pObj?.cut_off_start || !pObj?.cut_off_end) return false;
+    // Only regular semi-monthly cycles represent the official payroll cut-off window
+    if (!pObj.is_semi_monthly) return false;
+    const today = new Date().toISOString().split('T')[0];
+    return today >= pObj.cut_off_start && today <= pObj.cut_off_end;
+  };
+
+  const renderPeriodOption = (periodName, cutOffLabel = '') => {
+    const meta = getPeriodMeta(periodName);
+    const status = meta?.status || 'Draft';
+    const today = new Date().toISOString().split('T')[0];
+
+    const isLiveCurrent = isCurrentCutOff(meta);
+    const isHistorical = periodName.includes('2024') || periodName.includes('2025');
+    const isClosedPaid = status === 'Paid' || status === 'Finalized';
+    const isCutOffEnded = meta?.cut_off_end ? meta.cut_off_end < today : false;
+
+    // Previous data: ended cut-offs or historical/closed periods (should be greyed out)
+    const isPrevData = (isCutOffEnded && isClosedPaid) || (isHistorical && isClosedPaid) || (periodName === 'September 1–15, 2026' && isClosedPaid);
+
+    // New computed payroll: current live cycle that is computed/paid, or newly active computed period
+    const isNewComputed = (isLiveCurrent && ['Approved', 'Finalized', 'Paid'].includes(status)) ||
+                          (periodName === selectedMonth && ['Approved', 'Finalized', 'Paid'].includes(period?.status || status) && !isPrevData);
+
+    let emoji = '⚪';
+    let statusTag = '';
+    let optionStyle = {};
+
+    if (isPrevData) {
+      emoji = '🔘'; // Grey circle for previous closed cycles
+      statusTag = ' [Closed]';
+      optionStyle = { color: '#94a3b8', fontStyle: 'italic' };
+    } else if (isNewComputed) {
+      emoji = '🟢'; // Green strictly reserved for the new computed / active cycle!
+      statusTag = isLiveCurrent ? ' ← TODAY [Paid]' : ' [Paid]';
+      optionStyle = { color: '#15803d', fontWeight: 'bold' };
+    } else if (status === 'Approved') {
+      emoji = '🔵';
+      statusTag = ' [Approved]';
+      optionStyle = { color: '#2563eb' };
+    } else if (status === 'For Review') {
+      emoji = '🟡';
+      statusTag = ' [For Review]';
+      optionStyle = { color: '#d97706' };
+    } else if (isLiveCurrent) {
+      emoji = '🟢';
+      statusTag = ' ← TODAY';
+      optionStyle = { color: '#0f172a', fontWeight: '600' };
+    } else {
+      emoji = '⚪';
+      statusTag = '';
+      optionStyle = { color: '#334155' };
+    }
+
+    const label = `${emoji} ${periodName}${cutOffLabel ? ` (${cutOffLabel})` : ''}${statusTag}`;
+
+    return (
+      <option key={periodName} value={periodName} style={optionStyle}>
+        {label}
+      </option>
+    );
+  };
 
 
   // New Employee Form State
@@ -164,6 +232,7 @@ export default function PayrollComputationView({ searchFilter }) {
     try {
       const res = await api.getPayrollPeriods();
       if (Array.isArray(res)) {
+        setAllPeriods(res);
         const standardNames = [
           'September 1–15, 2026', 'September 16–30, 2026', 'September 2026',
           'October 1–15, 2026', 'October 16–31, 2026', 'October 2026',
@@ -186,6 +255,7 @@ export default function PayrollComputationView({ searchFilter }) {
 
   const handlePeriodCreated = (newPeriod) => {
     setCustomPeriods(prev => [newPeriod, ...prev]);
+    setAllPeriods(prev => [newPeriod, ...prev]);
     setSelectedMonth(newPeriod.period_name);
     showToast(`✨ Custom payroll period "${newPeriod.period_name}" created & initialized in Draft mode!`);
     loadComputation(newPeriod.period_name);
@@ -197,7 +267,7 @@ export default function PayrollComputationView({ searchFilter }) {
 
   const handleCompute = async () => {
     if (!canPerformAction(user?.role, 'COMPUTE_PAYROLL')) {
-      showToast('⛔ Permission Denied: Only Payroll Officer or System Admin can run payroll computation.');
+      showToast('⛔ Permission Denied: Only Payroll Officer, Finance Director, or System Admin can run payroll computation.');
       return;
     }
 
@@ -446,38 +516,34 @@ export default function PayrollComputationView({ searchFilter }) {
             >
               {customPeriods.length > 0 && (
                 <optgroup label="── ✨ Custom / Ad-hoc Periods ──">
-                  {customPeriods.map(cp => (
-                    <option key={cp.period_name} value={cp.period_name}>
-                      ⭐ {cp.period_name} ({cp.cut_off_type || 'Custom'})
-                    </option>
-                  ))}
+                  {customPeriods.map(cp => renderPeriodOption(cp.period_name, cp.cut_off_type || 'Custom'))}
                 </optgroup>
               )}
               <optgroup label="── 📅 Current Live Periods (2026) ──">
-                <option value="September 1–15, 2026">🟢 Sep 1–15, 2026 (1st Cut-off) ← TODAY</option>
-                <option value="September 16–30, 2026">September 16–30, 2026 (2nd Cut-off)</option>
-                <option value="September 2026">September 2026 (Monthly)</option>
-                <option value="October 1–15, 2026">October 1–15, 2026 (1st Cut-off)</option>
-                <option value="October 16–31, 2026">October 16–31, 2026 (2nd Cut-off)</option>
-                <option value="October 2026">October 2026 (Monthly)</option>
-                <option value="November 1–15, 2026">November 1–15, 2026 (1st Cut-off)</option>
-                <option value="November 16–30, 2026">November 16–30, 2026 (2nd Cut-off)</option>
-                <option value="November 2026">November 2026 (Monthly)</option>
-                <option value="December 1–15, 2026">December 1–15, 2026 (1st Cut-off)</option>
-                <option value="December 16–31, 2026">December 16–31, 2026 (2nd Cut-off)</option>
-                <option value="December 2026">December 2026 (Monthly)</option>
+                {renderPeriodOption('September 1–15, 2026', '1st Cut-off')}
+                {renderPeriodOption('September 16–30, 2026', '2nd Cut-off')}
+                {renderPeriodOption('September 2026', 'Monthly')}
+                {renderPeriodOption('October 1–15, 2026', '1st Cut-off')}
+                {renderPeriodOption('October 16–31, 2026', '2nd Cut-off')}
+                {renderPeriodOption('October 2026', 'Monthly')}
+                {renderPeriodOption('November 1–15, 2026', '1st Cut-off')}
+                {renderPeriodOption('November 16–30, 2026', '2nd Cut-off')}
+                {renderPeriodOption('November 2026', 'Monthly')}
+                {renderPeriodOption('December 1–15, 2026', '1st Cut-off')}
+                {renderPeriodOption('December 16–31, 2026', '2nd Cut-off')}
+                {renderPeriodOption('December 2026', 'Monthly')}
               </optgroup>
               <optgroup label="── Demo / Historical (2024) ──">
-                <option value="June 2024">June 2024 (Monthly)</option>
-                <option value="July 2024">July 2024 (Monthly)</option>
-                <option value="August 2024">August 2024 (Monthly)</option>
+                {renderPeriodOption('June 2024', 'Monthly')}
+                {renderPeriodOption('July 2024', 'Monthly')}
+                {renderPeriodOption('August 2024', 'Monthly')}
               </optgroup>
               <optgroup label="── Semi-Monthly Cut-offs 2024 ──">
-                <option value="July 1–15, 2024">July 1–15, 2024 (1st Cut-off)</option>
-                <option value="July 16–31, 2024">July 16–31, 2024 (2nd Cut-off)</option>
-                <option value="August 1–15, 2024">August 1–15, 2024 (1st Cut-off)</option>
-                <option value="August 16–31, 2024">August 16–31, 2024 (2nd Cut-off)</option>
-                <option value="September 1–15, 2024">September 1–15, 2024 (1st Cut-off)</option>
+                {renderPeriodOption('July 1–15, 2024', '1st Cut-off')}
+                {renderPeriodOption('July 16–31, 2024', '2nd Cut-off')}
+                {renderPeriodOption('August 1–15, 2024', '1st Cut-off')}
+                {renderPeriodOption('August 16–31, 2024', '2nd Cut-off')}
+                {renderPeriodOption('September 1–15, 2024', '1st Cut-off')}
               </optgroup>
             </select>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-3 pointer-events-none" />
@@ -492,9 +558,9 @@ export default function PayrollComputationView({ searchFilter }) {
             const canCompute = hasRole && isApproved && !isComputing;
 
             const getTitle = () => {
-              if (!hasRole) return '⛔ Requires Payroll Officer or System Administrator permission';
+              if (!hasRole) return '⛔ Requires Payroll Officer, Finance Director, or System Administrator permission';
               if (!isApproved) return `⚠️ Period must be Approved by Finance Director first (current: "${periodStatus}"). Complete: Draft → For Review → Approve.`;
-              return '⚡ Execute live cross-module payroll computation (RBAC: Officer / Admin)';
+              return '⚡ Execute live cross-module payroll computation (RBAC: Officer / Director / Admin)';
             };
 
             return (

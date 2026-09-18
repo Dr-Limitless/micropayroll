@@ -396,7 +396,7 @@ const _seedClaimIds = new Set(claimsList.map(c => c.id));
 function loadClaimsOverrides() {
   try {
     if (fs.existsSync(CLAIMS_PERSIST_FILE)) {
-      const raw = fs.readFileSync(CLAIMS_PERSIST_FILE, 'utf8');
+      const raw = fs.readFileSync(CLAIMS_PERSIST_FILE, 'utf8').replace(/^\uFEFF/, '');
       const { overrides = {}, newClaims = [] } = JSON.parse(raw);
 
       // Apply status/approver overrides to the seed data
@@ -405,10 +405,22 @@ function loadClaimsOverrides() {
         if (claim) Object.assign(claim, patch);
       });
 
-      // Re-append any claims created after the seed
+      // Re-append any claims created after the seed if not already present
       newClaims.forEach(nc => {
-        if (!claimsList.find(c => c.id === nc.id)) {
-          claimsList.push(nc);
+        const existing = claimsList.find(c => c.id === nc.id || (nc.claim_code && c.claim_code === nc.claim_code));
+        if (!existing) {
+          claimsList.unshift(nc);
+        } else {
+          if (nc.employee_name && (!existing.employee_name || existing.employee_name === 'Unknown')) {
+            existing.employee_name = nc.employee_name;
+            existing.employee = nc.employee_name;
+          }
+          if (nc.status && existing.status !== nc.status) {
+            existing.status = nc.status;
+          }
+          if (nc.approved_by && !existing.approved_by) {
+            existing.approved_by = nc.approved_by;
+          }
         }
       });
     }
@@ -2070,9 +2082,9 @@ async function seedAndHydratePostgres(client) {
     if (parseInt(claimCheck.rows[0].count, 10) === 0) {
       for (const c of claimsList) {
         await client.query(
-          `INSERT INTO claims (id, claim_code, employee_id, claim_type, date_filed, amount, description, status, reimbursement_status, payroll_period, approved_by, is_ppa, ppa_source_period)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) ON CONFLICT (id) DO NOTHING`,
-          [c.id, c.claim_code, c.employee_id, c.claim_type, c.date_filed, c.amount, c.description, c.status, c.reimbursement_status, c.payroll_period, c.approved_by, c.is_ppa || false, c.ppa_source_period || null]
+          `INSERT INTO claims (id, claim_code, employee_id, claim_type, date_filed, amount, description, status, reimbursement_status, payroll_period, approved_by, is_ppa, ppa_source_period, employee_name)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) ON CONFLICT (id) DO NOTHING`,
+          [c.id, c.claim_code, c.employee_id, c.claim_type, c.date_filed, c.amount, c.description, c.status, c.reimbursement_status, c.payroll_period, c.approved_by, c.is_ppa || false, c.ppa_source_period || null, c.employee_name || c.employee || null]
         );
       }
       await client.query(`SELECT setval(pg_get_serial_sequence('claims', 'id'), COALESCE((SELECT MAX(id) FROM claims), 1))`);
@@ -2082,6 +2094,8 @@ async function seedAndHydratePostgres(client) {
         id: r.id,
         claim_code: r.claim_code,
         employee_id: r.employee_id,
+        employee_name: r.employee_name || null,
+        employee: r.employee_name || null,
         claim_type: r.claim_type,
         date_filed: r.date_filed ? new Date(r.date_filed).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         amount: Number(r.amount),
@@ -2094,6 +2108,9 @@ async function seedAndHydratePostgres(client) {
         ppa_source_period: r.ppa_source_period
       }));
     }
+    // Re-merge file-persisted claims and approvals so data is NEVER missing after restarts
+    loadClaimsOverrides();
+
 
     // 6. Microloans
     const loanCheck = await client.query('SELECT COUNT(*) FROM microloans');
@@ -2627,7 +2644,7 @@ const db = {
       first_name: data.first_name,
       last_name: data.last_name,
       initials: `${data.first_name[0]}${data.last_name[0]}`.toUpperCase(),
-      email: data.email,
+      email: (data.email && data.email.trim()) || `${data.first_name.toLowerCase().replace(/\s+/g, '')}.${data.last_name.toLowerCase().replace(/\s+/g, '')}${newId}@mms.com`,
       phone: data.phone || '+63 917 000 0000',
       department: data.department || 'Engineering',
       position: data.position || 'Software Specialist',
@@ -3112,18 +3129,22 @@ const db = {
 
   // --- Compensation Planning ---
   getCompensation: () => {
+    const enrichedAdjustments = salaryAdjustments.map(adj => {
+      const emp = masterEmployees.find(e => e.id === adj.employee_id);
+      return {
+        ...adj,
+        previous_salary: adj.current_salary,
+        employee_name: emp ? `${emp.first_name} ${emp.last_name}` : 'Unknown',
+        employee_code: emp ? emp.employee_code : 'EMP-000',
+        department: emp ? emp.department : 'General'
+      };
+    });
+
     return {
       salaryBands,
       allowanceTypes,
-      salaryAdjustments: salaryAdjustments.map(adj => {
-        const emp = masterEmployees.find(e => e.id === adj.employee_id);
-        return {
-          ...adj,
-          employee_name: emp ? `${emp.first_name} ${emp.last_name}` : 'Unknown',
-          employee_code: emp ? emp.employee_code : 'EMP-000',
-          department: emp ? emp.department : 'General'
-        };
-      }),
+      salaryAdjustments: enrichedAdjustments,
+      adjustments: enrichedAdjustments,
       compensation: masterEmployees.map(emp => {
         const activeAdjustments = salaryAdjustments.filter(a => a.employee_id === emp.id && a.status === 'Approved');
         const activeSalary = activeAdjustments.length > 0 ? activeAdjustments[0].proposed_salary : emp.base_salary;
@@ -3149,7 +3170,7 @@ const db = {
 
   createSalaryAdjustment: async (data) => {
     const emp = masterEmployees.find(e => e.id === Number(data.employee_id));
-    const currentSalary = emp ? emp.base_salary : Number(data.current_salary);
+    const currentSalary = emp ? emp.base_salary : Number(data.current_salary || 50000);
     const proposedSalary = Number(data.proposed_salary);
     const diff = proposedSalary - currentSalary;
     const pct = currentSalary > 0 ? Number(((diff / currentSalary) * 100).toFixed(2)) : 0;
@@ -3177,6 +3198,7 @@ const db = {
       id: insertedId,
       employee_id: Number(data.employee_id),
       current_salary: currentSalary,
+      previous_salary: currentSalary,
       proposed_salary: proposedSalary,
       adjustment_amount: diff,
       adjustment_percentage: pct,
@@ -3184,7 +3206,10 @@ const db = {
       effective_date,
       requested_by,
       approved_by: null,
-      status
+      status,
+      employee_name: emp ? `${emp.first_name} ${emp.last_name}` : 'Unknown',
+      employee_code: emp ? emp.employee_code : 'EMP-000',
+      department: emp ? emp.department : 'General'
     };
 
     salaryAdjustments.unshift(adjustment);
@@ -3391,12 +3416,34 @@ const db = {
   // --- Claims & Reimbursements ---
   getClaims: () => {
     return claimsList.map(c => {
+      // Correct legacy 'July 2024' period for claims filed in current year / non-2024
+      const dateStr = c.date_filed ? (typeof c.date_filed === 'string' ? c.date_filed : new Date(c.date_filed).toISOString().split('T')[0]) : null;
+      let resolvedPeriod = c.payroll_period;
+      if (!resolvedPeriod || (resolvedPeriod === 'July 2024' && dateStr && !dateStr.startsWith('2024'))) {
+        resolvedPeriod = getPeriodForDate(dateStr, true) || 'September 16–30, 2026';
+      }
+
+      // If the claim has an explicitly stored employee_name (set during createClaim), prefer it.
+      // This prevents user.id/employee.id collisions where admin (user.id=2) gets mapped to Jose Reyes (employee.id=2).
+      if (c.employee_name && c.employee_name !== 'Unknown') {
+        return {
+          ...c,
+          payroll_period: resolvedPeriod,
+          employee: c.employee_name,
+          claim_id: c.claim_code
+        };
+      }
       const emp = masterEmployees.find(e => e.id === c.employee_id);
+      const resolvedName = emp
+        ? `${emp.first_name} ${emp.last_name}`
+        : (c.employee || 'Unknown');
+      const resolvedDept = emp ? emp.department : (c.department || 'General');
       return {
         ...c,
-        employee: emp ? `${emp.first_name} ${emp.last_name}` : 'Unknown',
-        employee_name: emp ? `${emp.first_name} ${emp.last_name}` : 'Unknown',
-        department: emp ? emp.department : 'General',
+        payroll_period: resolvedPeriod,
+        employee: resolvedName,
+        employee_name: resolvedName,
+        department: resolvedDept,
         claim_id: c.claim_code
       };
     });
@@ -3404,10 +3451,18 @@ const db = {
 
   createClaim: async (claimData) => {
     let empId = Number(claimData.employee_id);
-    if (!empId && claimData.employee) {
-      const found = masterEmployees.find(e => `${e.first_name} ${e.last_name}`.toLowerCase() === claimData.employee.toLowerCase());
-      empId = found ? found.id : 1;
+    // Try to find the employee by ID first
+    let emp = masterEmployees.find(e => e.id === empId);
+    // If not found by ID, try by name (for non-employee users like admins)
+    if (!emp && claimData.employee) {
+      emp = masterEmployees.find(e =>
+        `${e.first_name} ${e.last_name}`.toLowerCase() === claimData.employee.toLowerCase()
+      );
     }
+    // Use the provided employee_name or derive from emp; this persists even if IDs don't match
+    const storedEmployeeName = claimData.employee || (emp ? `${emp.first_name} ${emp.last_name}` : 'Unknown');
+    const storedDept = emp ? emp.department : (claimData.department || 'General');
+    if (!empId) empId = emp ? emp.id : 1;
 
     const claim_type = claimData.type || claimData.claim_type || 'Medical & Dental';
     const date_filed = claimData.date || new Date().toISOString().split('T')[0];
@@ -3415,16 +3470,17 @@ const db = {
     const description = claimData.description || 'Employee reimbursable expense';
     const status = 'Submitted';
     const reimbursement_status = 'Pending Reimbursement';
-    const payroll_period = 'July 2024';
+    const resolvedYear = date_filed ? date_filed.split('-')[0] : '2026';
+    const payroll_period = claimData.payroll_period || getPeriodForDate(date_filed, true) || 'September 16–30, 2026';
     let insertedId = claimsList.length > 0 ? Math.max(...claimsList.map(c => c.id)) + 1 : 1;
-    const claim_code = `CLM-2024-${String(insertedId).padStart(3, '0')}`;
+    const claim_code = `CLM-${resolvedYear}-${String(insertedId).padStart(3, '0')}`;
 
     if (isPostgreConnected) {
       try {
         const res = await pool.query(
-          `INSERT INTO claims (claim_code, employee_id, claim_type, date_filed, amount, description, status, reimbursement_status, payroll_period)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-          [claim_code, empId, claim_type, date_filed, amount, description, status, reimbursement_status, payroll_period]
+          `INSERT INTO claims (claim_code, employee_id, claim_type, date_filed, amount, description, status, reimbursement_status, payroll_period, employee_name)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+          [claim_code, empId, claim_type, date_filed, amount, description, status, reimbursement_status, payroll_period, storedEmployeeName]
         );
         if (res.rows[0]) insertedId = res.rows[0].id;
       } catch (err) {
@@ -3436,6 +3492,9 @@ const db = {
       id: insertedId,
       claim_code,
       employee_id: empId,
+      employee_name: storedEmployeeName,  // store filer's name directly
+      employee: storedEmployeeName,
+      department: storedDept,
       claim_type,
       date_filed,
       amount,
@@ -4221,20 +4280,25 @@ const db = {
 
   getTaskQueueCounts: (role) => {
     const counts = {};
+    const pendingLoans = microloans.filter(l => l.status === 'Pending').length;
     if (role === 'manager') {
       counts['claim_verification'] = claimsList.filter(c => c.status === 'Pending' || c.status === 'Submitted').length;
       counts['timekeeping'] = attendanceRecords.filter(a => a.approval_status === 'Pending').length;
+      counts['microloans'] = pendingLoans;
     }
     if (role === 'director') {
-      counts['reimbursement'] = microloans.filter(l => l.status === 'Pending').length;
+      counts['reimbursement'] = pendingLoans;
+      counts['microloans'] = pendingLoans;
       counts['salary_adjustment'] = salaryAdjustments.filter(a => a.status === 'Pending Approval').length;
     }
     if (role === 'officer') {
       counts['payroll_computation'] = claimsList.filter(c => c.status === 'Approved').length;
+      counts['microloans'] = pendingLoans;
     }
     if (role === 'admin') {
       counts['payroll_computation'] = claimsList.filter(c => c.status === 'Approved').length;
       counts['claim_verification'] = claimsList.filter(c => c.status === 'Pending' || c.status === 'Submitted').length;
+      counts['microloans'] = pendingLoans;
     }
     return counts;
   },

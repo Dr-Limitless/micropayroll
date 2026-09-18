@@ -16,7 +16,7 @@ router.get('/computation', (req, res) => {
   }
 });
 
-router.post('/compute', authenticateToken, requireRole(['admin', 'officer']), async (req, res) => {
+router.post('/compute', authenticateToken, requireRole(['admin', 'officer', 'director']), async (req, res) => {
   try {
     const { month } = req.body;
     const periodName = month || 'July 2024';
