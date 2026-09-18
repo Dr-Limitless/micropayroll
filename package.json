@@ -7,7 +7,10 @@
     "dev:all": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "cd server && npm start",
     "dev:client": "cd client && npm run dev",
-    "start": "node start-dev.js"
+    "build": "cd client && npm run build",
+    "start": "node start-dev.js",
+    "start:server": "cd server && npm start",
+    "start:client": "cd client && npm start"
   },
   "keywords": [],
   "author": "",

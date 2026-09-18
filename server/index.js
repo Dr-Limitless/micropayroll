@@ -1,4 +1,6 @@
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 
@@ -38,9 +40,26 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Serve frontend build if available (supports single-domain cloud deployment on HostForge)
+const clientDistPath = path.join(__dirname, '../client/dist');
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(clientDistPath, 'index.html'));
+  });
+} else {
+  app.get('/', (req, res) => {
+    res.json({
+      status: 'online',
+      service: 'Microfinancial Management System (MMS) HR & Payroll API',
+      version: '2.4.0',
+      health: '/api/health'
+    });
+  });
+}
+
 // Global process resilience guards
-const fs = require('fs');
-const path = require('path');
 const exitLog = path.join(__dirname, 'exit.log');
 
 process.on('uncaughtException', (err) => {
